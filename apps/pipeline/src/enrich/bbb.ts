@@ -148,6 +148,8 @@ export interface HarvestSummary {
   candidates: number;
   skipped_recent: number;
   requests: { live: number; archive: number };
+  /** Transient (5xx / network) failures after retries: no row is written, the next run retries them. */
+  transient_failures: number;
   states: Record<string, number>;
   ratings: Record<string, number>;
   blocks: Block[];
@@ -182,6 +184,7 @@ export async function harvestBbb(db: Duck, o: HarvestOptions): Promise<HarvestSu
     candidates: 0,
     skipped_recent: 0,
     requests: { live: 0, archive: 0 },
+    transient_failures: 0,
     states: {},
     ratings: {},
     blocks: [],
@@ -190,15 +193,26 @@ export async function harvestBbb(db: Duck, o: HarvestOptions): Promise<HarvestSu
   await ensureBbbSchema(db);
 
   // ponytail: one request at a time, fixed delay before every network call, both hosts.
+  // 5xx / network errors retry 3 times with doubling delay; a 403/429 is never retried.
   let first = true;
   const get = async (url: string, kind: "live" | "archive") => {
-    if (!first) await sleep(delayMs);
-    first = false;
-    summary.requests[kind]++;
-    const res = await fetchFn(url, { headers: { "User-Agent": USER_AGENT } });
-    const body = res.status === 200 ? await res.text() : "";
-    o.log.info({ step: "bbb", kind, url, status: res.status }, "bbb request");
-    return { status: res.status, body };
+    for (let attempt = 0; ; attempt++) {
+      if (!first) await sleep(delayMs * 2 ** attempt);
+      first = false;
+      summary.requests[kind]++;
+      let status = 0;
+      let body = "";
+      try {
+        const res = await fetchFn(url, { headers: { "User-Agent": USER_AGENT } });
+        status = res.status;
+        body = status === 200 ? await res.text() : "";
+      } catch (e) {
+        o.log.warn({ step: "bbb", kind, url, error: String(e) }, "bbb request failed");
+      }
+      o.log.info({ step: "bbb", kind, url, status, attempt }, "bbb request");
+      if ((status >= 500 || status === 0) && attempt < 3) continue;
+      return { status, body };
+    }
   };
   const blocked = () => summary.blocks[0];
   const block = (status: number, url: string) => {
@@ -241,7 +255,11 @@ export async function harvestBbb(db: Duck, o: HarvestOptions): Promise<HarvestSu
     } catch {
       cdxReason = "cdx_unparseable";
     }
-  } else cdxReason = `cdx_http_${cdx.status}`;
+  } else if (cdx.status >= 500 || cdx.status === 0)
+    throw new Error(
+      `bbb: Internet Archive CDX index unavailable (HTTP ${cdx.status}); nothing recorded, rerun later`,
+    );
+  else cdxReason = `cdx_http_${cdx.status}`;
   o.log.info({ step: "bbb", archived_profiles: index.size, cdxReason }, "cdx index");
 
   for (const c of candidates) {
@@ -284,7 +302,10 @@ export async function harvestBbb(db: Duck, o: HarvestOptions): Promise<HarvestSu
             source: "live",
           };
         } else if (live.status === 403 || live.status === 429) block(live.status, hit.url);
-        else row.reason = `live_http_${live.status}`;
+        else if (live.status >= 500 || live.status === 0) {
+          summary.transient_failures++;
+          continue;
+        } else row.reason = `live_http_${live.status}`;
       }
       if (row.state === "unavailable" && !row.reason) {
         const arch = await get(
@@ -302,6 +323,9 @@ export async function harvestBbb(db: Duck, o: HarvestOptions): Promise<HarvestSu
             archiveTs: hit.timestamp,
             reason: why ? `access_boundary_${why.status}` : "live_unreadable",
           };
+        } else if (arch.status >= 500 || arch.status === 0) {
+          summary.transient_failures++;
+          continue;
         } else row.reason = boundary ?? `archive_http_${arch.status}`;
       }
     }

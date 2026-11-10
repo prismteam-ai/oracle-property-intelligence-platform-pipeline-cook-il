@@ -171,4 +171,33 @@ describe("harvestBbb", () => {
     ]);
     expect(calls.some((u) => u.includes("?") && u.startsWith(BBB_ORIGIN))).toBe(false);
   });
+
+  it("retries transient failures and never records them", async () => {
+    const db = await seed();
+    const calls: string[] = [];
+    let archiveTries = 0;
+    const fetch: Fetch = (url) => {
+      calls.push(url);
+      if (url === CDX_URL)
+        return Promise.resolve({ status: 200, text: () => Promise.resolve(CDX) });
+      if (url.startsWith("https://web.archive.org/web/")) {
+        archiveTries++;
+        return Promise.resolve({ status: 503, text: () => Promise.resolve("") });
+      }
+      return Promise.resolve({ status: 403, text: () => Promise.resolve("") });
+    };
+    const r = await harvestBbb(db, { limit: 1, minPermits: 3, log, fetch, delayMs: 0 });
+    expect(r.candidates).toBe(1);
+    expect(r.transient_failures).toBe(0); // idfpr:3 has no slug at all
+    const r2 = await harvestBbb(db, { limit: 10, minPermits: 2, log, fetch, delayMs: 0 });
+    expect(archiveTries).toBe(4);
+    expect(r2.transient_failures).toBe(1);
+    expect(await db.scalar("select count(*) from bbb_lookup where contractor_id = 'idfpr:1'")).toBe(
+      0,
+    );
+    const down: Fetch = () => Promise.resolve({ status: 503, text: () => Promise.resolve("") });
+    await expect(
+      harvestBbb(db, { limit: 10, minPermits: 1, log, fetch: down, delayMs: 0 }),
+    ).rejects.toThrow(/CDX/);
+  });
 });
