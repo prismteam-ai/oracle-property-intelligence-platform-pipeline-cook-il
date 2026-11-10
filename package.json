@@ -12,7 +12,8 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "pipeline": "node apps/pipeline/dist/cli.js",
-    "web": "node apps/web/dist/server/apps/web/src/main.js"
+    "web": "node apps/web/dist/server/apps/web/src/main.js",
+    "invoke-agent": "pnpm --filter @cook/agent-handler exec tsx ../../scripts/invoke-agent.ts"
   },
   "devDependencies": {
     "@cook/ipfs-publish": "workspace:*",
