@@ -110,6 +110,9 @@ row per failed page/step. `manifest_cid` / `root_cid` are filled by the IPFS pub
 - stage: 53 s for all eight sources.
 - transform: ~35 s end to end (property 11 s, permit 8 s, parquet 10 s); rerun yields zero deltas.
 - outputs: `data/cook_il.duckdb` 3.1 GB, Parquet snapshot 655 MB per run (26 files, largest 55 MB).
+- transform with the two relationship tables (2026-11-10, run `20261110T221716Z`): 41 s; 58,902
+  `property_improvement_has_contractor` rows (36,786 exact 0.80 / 21,570 suffix-stripped 0.70 / 546 dba 0.70 out
+  of 1,070,513 permits with a contractor name), 33,512 `contractor_has_license` rows; `pipeline bbb --limit 150`: 116 s.
 - A run row left `running` by a killed process is marked `failed` with an `interrupted` dead letter
   by the next run.
 
@@ -123,4 +126,5 @@ finishes with the rest of the sources and the next run retries. Transform errors
 
 See `docs/sources.md` and the `limitations` column of every run row: no permit close dates,
 Chicago pre-2006 permits without status, suburban permit portals not bulk-available, Clerk /
-Treasurer / Chicago trade licenses not loadable, BBB not harvested yet.
+Treasurer / Chicago trade licenses not loadable, contractor identity is a name match (no license/phone on
+permits), BBB reachable only through Internet Archive copies (`docs/bbb.md`).
