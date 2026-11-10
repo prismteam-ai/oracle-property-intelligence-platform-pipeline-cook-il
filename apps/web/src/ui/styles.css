@@ -93,7 +93,7 @@ h3 {
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
   gap: 10px;
 }
 .card {
@@ -111,6 +111,8 @@ h3 {
 .card .value {
   font-size: 22px;
   font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 .card .sub {
   color: var(--muted);
