@@ -97,6 +97,7 @@ h3 {
   gap: 10px;
 }
 .card {
+  min-width: 0;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -117,6 +118,7 @@ h3 {
 .card .sub {
   color: var(--muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
 }
 .tablewrap {
   overflow-x: auto;
