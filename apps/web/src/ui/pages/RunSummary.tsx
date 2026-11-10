@@ -100,15 +100,20 @@ export function RunSummary() {
           {
             key: "last_fetched_at",
             label: "last fetched at",
-            render: (r) => fmt(r.last_fetch?.fetched_at ?? null),
+            render: (r) =>
+              r.last_fetch
+                ? `${fmt(r.last_fetch.fetched_at)} (run ${r.last_fetch.run_id}${r.last_fetch.rows_fetched === null ? ", from watermark" : ""})`
+                : "never fetched",
           },
           {
             key: "last_rows",
             label: "rows (last fetching run)",
             render: (r) =>
-              r.last_fetch
-                ? `${fmt(r.last_fetch.rows_fetched)} in ${r.last_fetch.run_id}`
-                : "never fetched",
+              !r.last_fetch
+                ? "never fetched"
+                : r.last_fetch.rows_fetched === null
+                  ? "n/a (fetch run not in run history)"
+                  : `${fmt(r.last_fetch.rows_fetched)} in ${r.last_fetch.run_id}`,
           },
           {
             key: "watermark",

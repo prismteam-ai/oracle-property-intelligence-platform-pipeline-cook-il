@@ -61,8 +61,12 @@ export async function tableCounts(ds: Dataset): Promise<Record<string, number>> 
 }
 
 export interface SourceStatus extends SourceCount {
-  /** newest run that actually fetched rows for this source (rows_fetched > 0); null if none in history */
-  last_fetch: { run_id: string; rows_fetched: number; fetched_at: string | null } | null;
+  /**
+   * newest run that actually fetched rows for this source (rows_fetched > 0). When no run in history did
+   * (the fetching run was pruned or ran against another DB copy) it falls back to source_watermark:
+   * run_id = last_run_id, fetched_at = watermark value, rows_fetched = null (unknown).
+   */
+  last_fetch: { run_id: string; rows_fetched: number | null; fetched_at: string | null } | null;
   /** source_watermark row (what incremental fetches resume from) */
   watermark: { field: string; value: string | null; last_run_id: string } | null;
 }
@@ -82,17 +86,20 @@ export async function sourceStatus(ds: Dataset, runs: Run[]): Promise<SourceStat
       }
     }
     const w = wm.find((y) => y.source_system === src.source_system);
-    return {
-      ...src,
-      last_fetch,
-      watermark: w
-        ? {
-            field: String(w.watermark_field),
-            value: typeof w.watermark_value === "string" ? w.watermark_value : null,
-            last_run_id: String(w.last_run_id),
-          }
-        : null,
-    };
+    const watermark = w
+      ? {
+          field: String(w.watermark_field),
+          value: typeof w.watermark_value === "string" ? w.watermark_value : null,
+          last_run_id: String(w.last_run_id),
+        }
+      : null;
+    if (!last_fetch && watermark)
+      last_fetch = {
+        run_id: watermark.last_run_id,
+        rows_fetched: null,
+        fetched_at: watermark.value,
+      };
+    return { ...src, last_fetch, watermark };
   });
 }
 

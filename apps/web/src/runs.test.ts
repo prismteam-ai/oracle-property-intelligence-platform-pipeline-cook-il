@@ -134,4 +134,48 @@ describe("sourceStatus", () => {
       watermark: { field: ":updated_at", value: "w", last_run_id: "r2" },
     });
   });
+  it("falls back to source_watermark when no run in history fetched rows", async () => {
+    const zero = JSON.stringify([
+      {
+        source_system: "a",
+        dataset_id: "x",
+        url: "u",
+        rows_fetched: 0,
+        rows_staged: 0,
+        watermark_value: null,
+        fetched_at: null,
+      },
+    ]);
+    const r = [{ ...runRow("r3", null, null), sources: zero }];
+    const fake: Dataset = {
+      ...ds,
+      query: (sql: string) =>
+        Promise.resolve(
+          sql.includes("source_watermark")
+            ? [
+                {
+                  source_system: "a",
+                  watermark_field: ":updated_at",
+                  watermark_value: "2026-11-09T00:00:00",
+                  last_run_id: "r0",
+                },
+              ]
+            : r,
+        ),
+    };
+    const out = await sourceStatus(fake, await listRuns(fake));
+    expect(out[0]?.last_fetch).toEqual({
+      run_id: "r0",
+      rows_fetched: null,
+      fetched_at: "2026-11-09T00:00:00",
+    });
+    const none = await sourceStatus(
+      {
+        ...fake,
+        query: (sql: string) => Promise.resolve(sql.includes("source_watermark") ? [] : r),
+      },
+      await listRuns(fake),
+    );
+    expect(none[0]?.last_fetch).toBeNull();
+  });
 });
