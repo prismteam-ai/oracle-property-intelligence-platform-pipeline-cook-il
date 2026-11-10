@@ -29,9 +29,7 @@ export interface PublishOpts {
 export const sha256Hex = (b: Uint8Array): string => createHash("sha256").update(b).digest("hex");
 
 /** Build DAG + CAR for data/dataset/<run_id>, pin, verify, then record root_cid / manifest_cid on the run row. */
-export async function publish(
-  o: PublishOpts,
-): Promise<{
+export async function publish(o: PublishOpts): Promise<{
   manifest: Manifest;
   verification: Verification;
   carPath: string;
