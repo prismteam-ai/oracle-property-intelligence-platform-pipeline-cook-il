@@ -1,5 +1,5 @@
 import type { Dataset, Row } from "./db/duck.js";
-import { RunSchema, type Run } from "./contract.js";
+import { RunSchema, type Run, type SourceCount } from "./contract.js";
 import { TABLES } from "./db/duck.js";
 
 function json(v: unknown): unknown {
@@ -58,6 +58,42 @@ export async function tableCounts(ds: Dataset): Promise<Record<string, number>> 
     }
   }
   return out;
+}
+
+export interface SourceStatus extends SourceCount {
+  /** newest run that actually fetched rows for this source (rows_fetched > 0); null if none in history */
+  last_fetch: { run_id: string; rows_fetched: number; fetched_at: string | null } | null;
+  /** source_watermark row (what incremental fetches resume from) */
+  watermark: { field: string; value: string | null; last_run_id: string } | null;
+}
+
+/** Latest run's sources plus the last run that fetched each (a cached/incremental run reports 0 rows, not the dataset's state). */
+export async function sourceStatus(ds: Dataset, runs: Run[]): Promise<SourceStatus[]> {
+  const latest = runs[0];
+  if (!latest) return [];
+  const wm = await ds.query("SELECT * FROM source_watermark").catch(() => [] as Row[]);
+  return latest.sources.map((src) => {
+    let last_fetch: SourceStatus["last_fetch"] = null;
+    for (const r of runs) {
+      const x = r.sources.find((y) => y.source_system === src.source_system);
+      if (x && x.rows_fetched > 0) {
+        last_fetch = { run_id: r.run_id, rows_fetched: x.rows_fetched, fetched_at: x.fetched_at };
+        break;
+      }
+    }
+    const w = wm.find((y) => y.source_system === src.source_system);
+    return {
+      ...src,
+      last_fetch,
+      watermark: w
+        ? {
+            field: String(w.watermark_field),
+            value: typeof w.watermark_value === "string" ? w.watermark_value : null,
+            last_run_id: String(w.last_run_id),
+          }
+        : null,
+    };
+  });
 }
 
 export interface Coverage {

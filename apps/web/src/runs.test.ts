@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Dataset, Row } from "./db/duck.js";
 import { manifestSha256 } from "./publications.js";
-import { datasetInfo, listRuns, newestPublished, rowToRun } from "./runs.js";
+import { datasetInfo, listRuns, newestPublished, rowToRun, sourceStatus } from "./runs.js";
 
 const runRow = (run_id: string, previous_run_id: string | null, root_cid: string | null): Row => ({
   run_id,
@@ -87,5 +87,51 @@ describe("published-run resolution", () => {
     writeFileSync(join(dir, "r0", "manifest.json"), manifest("r0", null));
     const orphan = rowToRun(runRow("r4", null, null));
     expect((await newestPublished(ds, [dir], orphan))?.run_id).toBe("r0");
+  });
+});
+
+describe("sourceStatus", () => {
+  it("reports the last run that fetched rows, not the zeros of a cached run", async () => {
+    const src = (rows_fetched: number, fetched_at: string | null) =>
+      JSON.stringify([
+        {
+          source_system: "a",
+          dataset_id: "x",
+          url: "u",
+          rows_fetched,
+          rows_staged: 0,
+          watermark_value: null,
+          fetched_at,
+        },
+      ]);
+    const r = [
+      { ...runRow("r3", "r2", null), sources: src(0, null) },
+      { ...runRow("r2", "r1", null), sources: src(42, "2026-11-09T00:00:00Z") },
+      { ...runRow("r1", null, null), sources: src(7, "2026-11-08T00:00:00Z") },
+    ];
+    const fake: Dataset = {
+      ...ds,
+      query: (sql: string) =>
+        Promise.resolve(
+          sql.includes("source_watermark")
+            ? [
+                {
+                  source_system: "a",
+                  watermark_field: ":updated_at",
+                  watermark_value: "w",
+                  last_run_id: "r2",
+                },
+              ]
+            : r,
+        ),
+    };
+    const out = await sourceStatus(fake, await listRuns(fake));
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      source_system: "a",
+      rows_fetched: 0,
+      last_fetch: { run_id: "r2", rows_fetched: 42, fetched_at: "2026-11-09T00:00:00Z" },
+      watermark: { field: ":updated_at", value: "w", last_run_id: "r2" },
+    });
   });
 });

@@ -4,7 +4,7 @@ import type { AppContext } from "../context.js";
 import { guardSql } from "../db/sqlguard.js";
 import { FindPropertiesInput, GetPropertyInput, QueryDatasetInput } from "../mcp/contracts.js";
 import { findProperties, getProperty, tableSchema } from "../search/properties.js";
-import { coverage, getRun, listRuns, tableCounts } from "../runs.js";
+import { coverage, getRun, listRuns, sourceStatus, tableCounts } from "../runs.js";
 import { gatewayUrls, getPublication } from "../publications.js";
 import { AskInput, askAgent } from "../agent/agent.js";
 
@@ -24,6 +24,7 @@ export const appRouter = t.router({
       return {
         run: info.run,
         source: info.source,
+        sources: await sourceStatus(ctx.ds, runs),
         previous,
         table_counts: counts,
         coverage: cov,

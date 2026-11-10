@@ -5,7 +5,8 @@ import { fmt, trpc, useAsync } from "../trpc.js";
 export function RunSummary() {
   const q = useAsync(() => trpc.runs.latest.query(), "latest");
   if (!q.data) return <Status loading={q.loading} error={q.error} />;
-  const { run, previous, table_counts, coverage, source, dataset_origin, run_count } = q.data;
+  const { run, previous, table_counts, coverage, source, sources, dataset_origin, run_count } =
+    q.data;
   const deltaRows = Object.entries(run.deltas).map(([table, d]) => ({
     table,
     ...d,
@@ -84,17 +85,40 @@ export function RunSummary() {
       />
 
       <h2>Sources</h2>
+      <p className="muted">
+        &quot;Last fetched&quot; is the newest run that pulled rows from the source; an incremental
+        or cached run reports 0 rows for sources it did not re-fetch. Watermarks come from the
+        source_watermark table.
+      </p>
       <Table
         testId="sources"
-        rows={run.sources}
+        rows={sources}
         columns={[
           { key: "source_system" },
           { key: "dataset_id" },
-          { key: "url", render: (r) => <ExtLink href={r.url} /> },
-          { key: "rows_fetched", render: (r) => fmt(r.rows_fetched) },
-          { key: "rows_staged", render: (r) => fmt(r.rows_staged) },
-          { key: "watermark_value", render: (r) => fmt(r.watermark_value) },
-          { key: "fetched_at", render: (r) => fmt(r.fetched_at) },
+          { key: "url", label: "catalog URL", render: (r) => <ExtLink href={r.url} /> },
+          {
+            key: "last_fetched_at",
+            label: "last fetched at",
+            render: (r) => fmt(r.last_fetch?.fetched_at ?? null),
+          },
+          {
+            key: "last_rows",
+            label: "rows (last fetching run)",
+            render: (r) =>
+              r.last_fetch
+                ? `${fmt(r.last_fetch.rows_fetched)} in ${r.last_fetch.run_id}`
+                : "never fetched",
+          },
+          {
+            key: "watermark",
+            render: (r) =>
+              r.watermark
+                ? `${r.watermark.field} = ${fmt(r.watermark.value)} (run ${r.watermark.last_run_id})`
+                : "—",
+          },
+          { key: "rows_fetched", label: "fetched (this run)", render: (r) => fmt(r.rows_fetched) },
+          { key: "rows_staged", label: "staged (this run)", render: (r) => fmt(r.rows_staged) },
         ]}
       />
 
