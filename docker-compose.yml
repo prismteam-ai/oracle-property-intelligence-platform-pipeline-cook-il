@@ -29,6 +29,9 @@ services:
     # error every 5 s for up to 10 min (apps/pipeline/src/db.ts) before failing the run.
     # Incremental run every 6h; first run happens at start. The cli logs "run started" /
     # "run finished" (run_id, counts, deltas) as JSON; the loop adds wall-clock and exit code.
+    # Each run ends by pruning data/dataset/<run_id> snapshots (keeps published runs + newest 2)
+    # and old raw inc-* batches (newest 3 per source); see docs/pipeline.md "Retention".
+    # Standalone: node apps/pipeline/dist/cli.js prune --keep 2 [--dry-run]
     command:
       - sh
       - -c

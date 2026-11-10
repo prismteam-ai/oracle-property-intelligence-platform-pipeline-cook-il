@@ -1,6 +1,6 @@
 # Pipeline — how it runs
 
-`apps/pipeline` is a CLI (`pipeline <discover|fetch|stage|transform|run|serve>`) that moves
+`apps/pipeline` is a CLI (`pipeline <discover|fetch|stage|transform|run|serve|prune>`) that moves
 Cook County open data from Socrata into `data/cook_il.duckdb` and Parquet snapshots under
 `data/dataset/<run_id>/<table>/`. Everything is file-based: no database server, no queue.
 
@@ -95,6 +95,23 @@ source_record_key)`.
   `run_id` (verified in `apps/pipeline/src/pipeline.test.ts`).
 - Property hashes include the roof-age anchor, so a permit change that moves a property's
   roof age shows up as an `updated` property delta.
+
+## Retention
+
+Every `run` writes a ~655 MB Parquet snapshot to `data/dataset/<run_id>/`; the Docker loop
+runs every 6 h, so without pruning the disk fills within days. At the end of a successful
+`run` (and standalone as `pipeline prune [--keep N] [--dry-run]`) the pipeline deletes:
+
+- `data/dataset/<run_id>/` directories except every run with a committed publication
+  (`<publications>/<run_id>/manifest.json` exists; `--publications`, `$PUBLICATIONS_DIR`,
+  default `./publications` relative to the working directory, like the web), the newest
+  `--keep` runs (default 2) and the run in progress.
+- `data/raw/<source>/inc-*` batches older than the newest 3 per source; `full` and `sample`
+  batches are kept (an incremental source with no watermark falls back to `full`).
+
+Each deletion is one JSON log line (`run_id` / `source`+`batch`, `bytes`), followed by a
+`prune summary` line; the `prune` command also prints the result (`kept`, `deleted`,
+`raw_deleted`, `bytes_freed`) as JSON. `--dry-run` reports without deleting.
 
 ## Run history
 

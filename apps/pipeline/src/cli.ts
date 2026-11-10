@@ -15,8 +15,9 @@ import { transform } from "./transform.js";
 import { serve } from "./serve.js";
 import { latestPublishedRun, publish, verifyPublished } from "./publish.js";
 import { harvestBbb } from "./enrich/bbb.js";
+import { prune } from "./prune.js";
 
-const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify|bbb> [options]
+const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify|bbb|prune> [options]
   --incremental       use per-source watermarks (fetch/run)
   --sample <n>        fetch only the first n rows per source into batch 'sample' (fetch/run)
   --source <system>   restrict to one source (repeatable)
@@ -27,7 +28,9 @@ const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify
   --car-url <url>     where the CAR is downloadable, e.g. a GitHub Release asset (publish; manifest car.release_url)
   --gateways <a,b,c>  gateway prefixes to verify from (publish/verify; default: the six built-in ones)
   --verifier <name>   who verifies, e.g. pipeline-host or github-actions (default pipeline-host)
-  --publications <d>  committed manifest dir (default ./publications)
+  --publications <d>  committed manifest dir (default $PUBLICATIONS_DIR or ./publications)
+  --keep <n>          prune: newest run directories to keep besides published ones (default 2)
+  --dry-run           prune: report what would be deleted without deleting
   --limit <n>         bbb: contractors to look up, most permit links first (default 150)
   --min-permits <m>   bbb: minimum permit links per contractor (default 1)`;
 
@@ -54,7 +57,9 @@ async function main(): Promise<void> {
       "car-url": { type: "string" },
       gateways: { type: "string" },
       verifier: { type: "string", default: "pipeline-host" },
-      publications: { type: "string", default: "publications" },
+      publications: { type: "string" },
+      keep: { type: "string", default: "2" },
+      "dry-run": { type: "boolean", default: false },
       limit: { type: "string", default: "150" },
       "min-permits": { type: "string", default: "1" },
       help: { type: "boolean", short: "h", default: false },
@@ -65,9 +70,20 @@ async function main(): Promise<void> {
     console.log(USAGE);
     return;
   }
+  const publicationsDir = values.publications ?? process.env["PUBLICATIONS_DIR"] ?? "publications";
+  if (cmd === "prune") {
+    const r = prune({
+      dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",
+      publicationsDir,
+      keep: Number(values.keep),
+      dryRun: values["dry-run"],
+      log: log.child({ cmd }),
+    });
+    console.log(JSON.stringify(r));
+    return;
+  }
   if (cmd === "publish" || cmd === "verify") {
     // no Socrata credentials needed; pin credentials are optional (see publish.ts)
-    const publicationsDir = values.publications;
     const gateways = values.gateways
       ? {
           gateways: values.gateways
@@ -194,6 +210,13 @@ async function main(): Promise<void> {
       runLog.info({ incremental: values.incremental }, "run started");
       const run = await runAll(ctx);
       runLog.info({ status: run.status, counts: run.counts, deltas: run.deltas }, "run finished");
+      prune({
+        dataDir,
+        publicationsDir,
+        keep: Number(values.keep),
+        currentRunId: runId,
+        log: runLog,
+      });
       console.log(
         JSON.stringify({
           run_id: run.run_id,
