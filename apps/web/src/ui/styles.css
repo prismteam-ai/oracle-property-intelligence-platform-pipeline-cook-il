@@ -158,6 +158,21 @@ th {
   margin: 0;
   word-break: break-all;
 }
+/* CIDs and gateway URLs are long unbroken tokens */
+a,
+code {
+  word-break: break-all;
+}
+h1,
+h2,
+h3,
+p,
+summary {
+  overflow-wrap: anywhere;
+}
+ul.plain li {
+  overflow-wrap: anywhere;
+}
 .muted {
   color: var(--muted);
 }
@@ -231,6 +246,7 @@ button.link {
   }
 }
 #map {
+  max-width: 100%;
   height: 420px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -246,6 +262,20 @@ button.link {
   border-radius: 6px;
   padding: 10px 12px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  overflow-x: auto;
+}
+.msg table {
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+}
+.result {
+  overflow-wrap: anywhere;
+}
+input,
+select {
+  max-width: 100%;
 }
 .msg.user {
   background: #eef3ff;

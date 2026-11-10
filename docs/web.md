@@ -63,7 +63,10 @@ Endpoints: `GET /health` -> `{ok, runId, rootCid, dataset, commit}`, `GET /build
 | `/agent`                  | Chat with the two README prompts as one-click examples.                                                                                                                                                                                                                                                                                          |
 | `/mcp`                    | MCP tool list, curl / Inspector examples, bearer-token note.                                                                                                                                                                                                                                                                                     |
 
-Every number and source URL is rendered as text; key elements carry `data-testid`. Layout works at 390 / 768 / 1440 px.
+Every number and source URL is rendered as text; key elements carry `data-testid`. Layout works at 390 / 768 / 1440 px:
+tables sit in `overflow-x: auto` wrappers, CID / gateway links break anywhere, `#map` and tables inside chat answers
+are capped at 100 % width; the responsive e2e asserts `scrollWidth <= innerWidth` on every page after load and after
+its main interaction.
 
 ## tRPC API (`/trpc`, `AppRouter` in `apps/web/src/api/router.ts`)
 
