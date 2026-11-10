@@ -19,7 +19,7 @@ const TOOLS = [
   {
     name: "findProperties",
     input:
-      "{ lat, lon, radiusMiles, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit? <= 500 }",
+      "{ lat, lon, radiusMiles, minRoofAge? (alias minRoofAgeYears), openRoofingPermitsOnly?, minOpenDays?, limit? <= 500 }",
     output:
       "{ properties: [property + distance_miles + permits: [permit + contractor?]], total_in_radius, source }",
   },
@@ -60,6 +60,15 @@ export function Mcp() {
         rows={TOOLS}
         columns={[{ key: "name" }, { key: "input", wrap: true }, { key: "output", wrap: true }]}
       />
+      <p className="muted" data-testid="mcp-filter-note">
+        <code>findProperties</code> applies exactly the filters of the Explore page (one shared
+        predicate, <code>search.properties</code>): <code>minRoofAge</code> keeps roofs at least
+        that many years old and drops rows whose roof age is unknown;{" "}
+        <code>openRoofingPermitsOnly</code> and <code>minOpenDays</code> keep properties with an
+        open roofing permit open at least that many days. <code>total_in_radius</code> counts after
+        all filters. Parameter aliases: <code>minRoofAgeYears</code> = <code>minRoofAge</code>.
+        Unknown parameters are rejected (never silently ignored).
+      </p>
       <p className="muted" data-testid="mcp-bbb-note">
         BBB wording for <code>contractor</code> rows: <code>bbb_state=stale</code> → "BBB A+
         (archived copy, &lt;bbb_checked_at date&gt;)", <code>unavailable</code> → "BBB: not

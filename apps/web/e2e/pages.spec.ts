@@ -154,6 +154,8 @@ test("mcp docs page lists tools and the bearer token note", async ({ page }) => 
   await expect(page.getByTestId("mcp-tools").locator("tbody tr")).toHaveCount(5);
   await expect(page.getByTestId("mcp-tools")).toContainText("findProperties");
   await expect(page.getByTestId("mcp-auth-note")).toContainText("Bearer");
+  await expect(page.getByTestId("mcp-filter-note")).toContainText("minRoofAgeYears");
+  await expect(page.getByTestId("mcp-tools")).toContainText("alias minRoofAgeYears");
   await expect(page.getByTestId("mcp-endpoint")).toContainText("/mcp");
 });
 
