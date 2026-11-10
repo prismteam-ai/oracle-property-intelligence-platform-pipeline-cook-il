@@ -15,6 +15,7 @@
     "web": "node apps/web/dist/server/apps/web/src/main.js"
   },
   "devDependencies": {
+    "@cook/ipfs-publish": "workspace:*",
     "@duckdb/node-api": "1.4.5-r.1",
     "@eslint/js": "10.0.1",
     "@types/ngeohash": "0.6.8",

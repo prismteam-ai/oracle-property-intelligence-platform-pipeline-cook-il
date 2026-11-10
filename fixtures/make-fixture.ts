@@ -2,6 +2,7 @@
 // Everything here is synthetic: CIDs are placeholders and are NOT published to IPFS.
 import { DuckDBInstance } from "@duckdb/node-api";
 import ngeohash from "ngeohash";
+import { DEFAULT_GATEWAYS, Manifest, type Verification } from "@cook/ipfs-publish";
 import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
@@ -723,82 +724,83 @@ export async function makeFixture(
   instance.closeSync();
   rmSync(tmp, { recursive: true, force: true });
 
-  // ---- publications (placeholder manifests)
+  // ---- publications (placeholder manifests in the @cook/ipfs-publish schema; nothing is pinned)
+  const tables = [
+    ...Object.keys(counts).filter((t) => !t.includes("_")),
+    "run",
+    "source_watermark",
+  ];
   for (const [k, run] of runs.entries()) {
     const dir = join(publicationsDir, run.run_id);
     mkdirSync(dir, { recursive: true });
-    const artifacts = [
-      ...Object.keys(counts).filter((t) => !t.includes("_")),
-      "run",
-      "source_watermark",
-    ].map((t, j) => ({
-      cid: placeholderCid(`${t}${k + 1}`),
-      name: `tables/${t}/part-0000.parquet`,
-      size: 100_000 + j * 7_331 + k * 911,
-      codec: "file",
-      sha256: hash(`${t}${k}`).slice(7),
-    }));
-    const manifest = {
+    const objects = [
+      { name: ".", cid: run.root_cid, size: 0, codec: "directory" as const, sha256: null },
+      ...tables.flatMap((t, j) => [
+        {
+          name: t,
+          cid: placeholderCid(`${t}dir${k + 1}`),
+          size: 0,
+          codec: "directory" as const,
+          sha256: null,
+        },
+        {
+          name: `${t}/part-0000.parquet`,
+          cid: placeholderCid(`${t}${k + 1}`),
+          size: 100_000 + j * 7_331 + k * 911,
+          codec: "file" as const,
+          sha256: hash(`${t}${k}`),
+        },
+      ]),
+    ];
+    const manifest = Manifest.parse({
+      schema: "cook-il.artifact-manifest.v1",
       run_id: run.run_id,
       created_at: run.finished_at,
       root_cid: run.root_cid,
-      manifest_cid: run.manifest_cid,
-      tables_cid: placeholderCid(`tables${k + 1}`),
-      previous_root_cid: k === 0 ? null : runs[k - 1]?.root_cid,
-      previous_run_id: run.previous_run_id,
-      ipns: null,
       car: {
         name: `${run.run_id}.car`,
-        cid: placeholderCid(`car${k + 1}`),
         size: 1_234_567 + k * 1000,
+        sha256: hash(`car${k}`),
+        cid: null,
       },
-      note: "FIXTURE: placeholder CIDs, nothing was published to IPFS.",
-      artifacts: [
-        {
-          cid: run.root_cid,
-          name: "/",
-          size: 0,
-          codec: "directory",
-          sha256: null,
-        },
-        {
-          cid: placeholderCid(`tables${k + 1}`),
-          name: "tables",
-          size: 0,
-          codec: "directory",
-          sha256: null,
-        },
-        ...artifacts,
-        {
-          cid: placeholderCid(`coverage${k + 1}`),
-          name: "coverage.json",
-          size: 2_048,
-          codec: "file",
-          sha256: hash(`coverage${k}`).slice(7),
-        },
-      ],
-    };
+      previous_run_id: run.previous_run_id,
+      previous_root_cid: k === 0 ? null : (runs[k - 1]?.root_cid ?? null),
+      ipns: null,
+      objects,
+      pins: ["filebase", "pinata"].map((provider) => ({
+        provider,
+        cid: run.root_cid,
+        at: run.finished_at,
+        ok: false,
+        detail: "FIXTURE: placeholder CID, nothing was pinned",
+      })),
+      origins: [],
+    });
     writeFileSync(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
-    writeFileSync(
-      join(dir, "verification.json"),
-      JSON.stringify(
-        {
-          verified_at: run.finished_at,
-          results: ["https://ipfs.io", "https://dweb.link"].map((gw) => ({
-            cid: run.root_cid,
-            name: "/",
-            gateway: gw,
-            url: `${gw}/ipfs/${run.root_cid}`,
-            status: "skipped (fixture, not published)",
-            size_match: null,
-            digest_match: null,
-            fetched_at: run.finished_at,
-          })),
-        },
-        null,
-        2,
-      ),
+    const files = objects.filter((o) => o.codec === "file");
+    const checks = DEFAULT_GATEWAYS.flatMap((gateway) =>
+      files.map((o) => ({
+        gateway,
+        name: o.name,
+        cid: o.cid,
+        status: 0,
+        size_match: false,
+        digest_match: false,
+        ms: 0,
+        fetched_at: run.finished_at,
+        error: "FIXTURE: not published, gateway not contacted",
+      })),
     );
+    const verification: Verification = {
+      run_id: run.run_id,
+      root_cid: run.root_cid,
+      verified_at: run.finished_at,
+      verifier: "fixture",
+      gateways: [...DEFAULT_GATEWAYS],
+      checks,
+      summary: Object.fromEntries(DEFAULT_GATEWAYS.map((g) => [g, { ok: 0, total: files.length }])),
+    };
+    writeFileSync(join(dir, "verification.json"), JSON.stringify(verification, null, 2));
   }
   return { dbPath, publicationsDir, counts };
 }

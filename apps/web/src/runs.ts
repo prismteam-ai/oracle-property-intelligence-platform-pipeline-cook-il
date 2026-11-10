@@ -138,8 +138,7 @@ export async function datasetInfo(ds: Dataset, pubDirs: string[]): Promise<Datas
     source: {
       runId: run.run_id,
       rootCid: run.root_cid ?? pub.manifest?.root_cid ?? null,
-      manifestCid: run.manifest_cid ?? pub.manifest?.manifest_cid ?? null,
-      tablesCid: pub.manifest?.tables_cid ?? null,
+      manifestCid: run.manifest_cid,
       syncedAt: run.finished_at ?? run.started_at,
     },
   };

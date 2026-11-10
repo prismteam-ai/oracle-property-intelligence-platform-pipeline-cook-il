@@ -49,13 +49,16 @@ test("publications renders manifest, gateway URLs, verification and previous CID
   await expect(page.getByTestId("gateway-urls")).toContainText(
     "https://dweb.link/ipfs/bafybeifixturerootthree",
   );
-  await expect(page.getByTestId("artifacts").locator("tbody tr")).toHaveCount(10);
-  await expect(page.getByTestId("artifacts")).toContainText("tables/property/part-0000.parquet");
+  await expect(page.getByTestId("gateway-urls").locator("li")).toHaveCount(6);
+  await expect(page.getByTestId("pins").locator("tbody tr")).toHaveCount(2);
+  await expect(page.getByTestId("artifacts").locator("tbody tr")).toHaveCount(15);
+  await expect(page.getByTestId("artifacts")).toContainText("property/part-0000.parquet");
   await expect(page.getByTestId("artifacts")).toContainText("directory");
-  await expect(page.getByTestId("verification").locator("tbody tr")).toHaveCount(2);
+  await expect(page.getByTestId("verification-summary-fixture").locator("tbody tr")).toHaveCount(6);
+  await expect(page.getByTestId("verification-checks-fixture").locator("tbody tr")).toHaveCount(42);
   await expect(page.getByTestId("pub-summary")).toContainText("bafybeifixtureroottwo");
   await expect(page.getByTestId("pub-summary")).toContainText(".car");
-  await expect(page.getByTestId("manifest-json")).toContainText('"artifacts"');
+  await expect(page.getByTestId("manifest-json")).toContainText('"objects"');
 });
 
 test("sql console runs a sample query and blocks writes", async ({ page }) => {

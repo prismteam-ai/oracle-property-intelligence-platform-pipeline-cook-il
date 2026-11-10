@@ -32,7 +32,7 @@ const model = env.OPENAI_API_KEY
 const ctx = createContext({
   ds,
   env,
-  pubDirs: [resolve(env.PUBLICATIONS_DIR), fixturePubDir],
+  pubDirs: [resolve(env.PUBLICATIONS_DIR), resolve("publications"), fixturePubDir],
   model,
 });
 

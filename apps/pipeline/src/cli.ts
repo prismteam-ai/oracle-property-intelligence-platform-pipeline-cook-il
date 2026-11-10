@@ -13,13 +13,18 @@ import { SOURCES, findSource, sourceUrl } from "./sources.js";
 import { stageAll } from "./stage.js";
 import { transform } from "./transform.js";
 import { serve } from "./serve.js";
+import { latestPublishedRun, publish, verifyPublished } from "./publish.js";
 
-const USAGE = `pipeline <discover|fetch|stage|transform|run|serve> [options]
+const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify> [options]
   --incremental       use per-source watermarks (fetch/run)
   --sample <n>        fetch only the first n rows per source into batch 'sample' (fetch/run)
   --source <system>   restrict to one source (repeatable)
   --data <dir>        data directory (default $DATA_DIR or ./data)
-  --as-of <date>      roof-age / open-days as-of date (transform; default today)`;
+  --as-of <date>      roof-age / open-days as-of date (transform; default today)
+  --run <run_id>      run to publish / verify (verify: default latest under publications/)
+  --previous <run_id> previous run for the CID chain (publish; default: the run's previous_run_id)
+  --verifier <name>   who verifies, e.g. pipeline-host or github-actions (default pipeline-host)
+  --publications <d>  committed manifest dir (default ./publications)`;
 
 const summary = (x: FetchResult) => ({
   source: x.source_system,
@@ -39,6 +44,10 @@ async function main(): Promise<void> {
       source: { type: "string", multiple: true },
       data: { type: "string" },
       "as-of": { type: "string" },
+      run: { type: "string" },
+      previous: { type: "string" },
+      verifier: { type: "string", default: "pipeline-host" },
+      publications: { type: "string", default: "publications" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -47,6 +56,37 @@ async function main(): Promise<void> {
     console.log(USAGE);
     return;
   }
+  if (cmd === "publish" || cmd === "verify") {
+    // no Socrata credentials needed; pin credentials are optional (see publish.ts)
+    const publicationsDir = values.publications;
+    if (cmd === "publish") {
+      if (!values.run) throw new Error("publish needs --run <run_id>");
+      const r = await publish({
+        runId: values.run,
+        previous: values.previous,
+        dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",
+        publicationsDir,
+        verifier: values.verifier,
+      });
+      console.log(
+        JSON.stringify({
+          run_id: values.run,
+          root_cid: r.manifest.root_cid,
+          manifest_cid: r.manifestCid,
+          car: r.carPath,
+          pins: r.manifest.pins,
+          summary: r.verification.summary,
+        }),
+      );
+    } else {
+      const runId = values.run || latestPublishedRun(publicationsDir);
+      if (!runId) throw new Error("verify: no --run given and nothing under publications/");
+      const r = await verifyPublished({ runId, publicationsDir, verifier: values.verifier });
+      console.log(JSON.stringify({ run_id: runId, file: r.file, summary: r.verification.summary }));
+    }
+    return;
+  }
+
   const env = loadEnv();
   const dataDir = values.data ?? env.DATA_DIR;
   mkdirSync(join(dataDir, "logs"), { recursive: true });

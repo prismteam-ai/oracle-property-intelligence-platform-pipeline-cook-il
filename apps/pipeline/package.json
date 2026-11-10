@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@cook/duck": "workspace:*",
+    "@cook/ipfs-publish": "workspace:*",
     "@cook/shared": "workspace:*",
     "dotenv": "18.0.10",
     "p-limit": "7.3.3",

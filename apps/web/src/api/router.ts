@@ -47,11 +47,12 @@ export const appRouter = t.router({
         run,
         publication: pub,
         root_cid: rootCid,
-        manifest_cid: pub.manifest?.manifest_cid ?? run?.manifest_cid ?? null,
+        // sha256 of the committed manifest.json, recorded on the run row by `pipeline publish`
+        manifest_cid: run?.manifest_cid ?? null,
         gateway_urls: rootCid ? gatewayUrls(rootCid) : [],
-        artifacts: (pub.manifest?.artifacts ?? []).map((a) => ({
-          ...a,
-          gateways: gatewayUrls(a.cid),
+        objects: (pub.manifest?.objects ?? []).map((o) => ({
+          ...o,
+          gateways: o.name === "." || !rootCid ? gatewayUrls(o.cid) : gatewayUrls(rootCid, o.name),
         })),
       };
     }),

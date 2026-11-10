@@ -6,6 +6,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
 COPY packages ./packages
 COPY apps ./apps
 COPY fixtures ./fixtures
+COPY publications ./publications
 RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN pnpm prune --prod

@@ -37,11 +37,11 @@ Dataset resolution at startup:
    300 contractors, 500 businesses, 4,221 sales, 3 runs with placeholder CIDs). The run limitations start with
    `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook/web fixture [db] [publications dir]` regenerates it.
 
-Publications are read from `PUBLICATIONS_DIR/<run_id>/manifest.json` and `verification.json` (default
-`<DATA_DIR>/publications/<run_id>/`, where the fixture also writes). Expected manifest shape: `run_id`,
-`root_cid`, `manifest_cid`, `tables_cid?`, `previous_root_cid?`, `ipns?: {name, resolved_cid}`, `car?: {name, cid, size}`,
-`artifacts: [{cid, name, size, codec: file|directory, sha256, origins?}]`. Verification:
-`results: [{cid, name?, gateway, url?, status, size_match, digest_match, fetched_at, error?}]`.
+Publications are read from `<PUBLICATIONS_DIR>/<run_id>/`, then the committed repo `publications/<run_id>/`, then
+the fixture dir (first `manifest.json` wins). Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
+manifest `{schema, run_id, created_at, root_cid, car, previous_run_id, previous_root_cid, ipns, objects, pins,
+origins}` and every `verification*.json` in the dir (`verification.json` from the pipeline host,
+`verification-github-actions.json` from CI). The CAR file is optional.
 
 Endpoints: `GET /health` -> `{ok, runId, rootCid, dataset, commit}`, `GET /build.json` -> `{commit, builtAt}`
 (`GIT_COMMIT` env, `dist/build.json`, or `git rev-parse HEAD`). Logs are JSON (pino) with an `x-request-id` per request.
