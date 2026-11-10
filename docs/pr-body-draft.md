@@ -63,4 +63,4 @@ Built against the Soofi team kit routing for this story (`oracle` + county skill
 
 ## Self-assessment
 
-Slowking self-run: `docs/slowking-self-assessment-2026-11-11-r1.md` (69/100 provisional, PR and demo gates pending).
+Slowking self-run: `docs/slowking-self-assessment-2026-11-11-r2.md` (76/100 provisional, strict actual-gates result 0/100 pending PR and demo).
