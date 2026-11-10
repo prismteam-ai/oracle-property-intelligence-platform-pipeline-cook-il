@@ -3,6 +3,8 @@
 export {
   BbbState,
   Contractor as ContractorSchema,
+  ContractorHasLicense as ContractorHasLicenseSchema,
+  PropertyImprovementHasContractor as PropertyImprovementHasContractorSchema,
   DeadLetter as DeadLetterSchema,
   Delta as DeltaSchema,
   Permit as PermitSchema,
@@ -14,6 +16,8 @@ export {
 } from "@cook/shared";
 export type {
   Contractor,
+  ContractorHasLicense,
+  PropertyImprovementHasContractor,
   DeadLetter,
   Delta,
   Permit,
