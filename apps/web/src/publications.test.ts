@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GATEWAYS, gatewayUrls, getPublication } from "./publications.js";
+import { GATEWAYS, gatewayUrls, getPublication, manifestSha256 } from "./publications.js";
 
 const manifest = {
   schema: "cook-il.artifact-manifest.v1",
@@ -53,10 +53,23 @@ describe("publications", () => {
     expect(GATEWAYS).toHaveLength(6);
     expect(urls).toHaveLength(6);
     expect(urls[0]).toEqual({
-      gateway: "https://ipfs.io",
-      url: "https://ipfs.io/ipfs/bafyabc/property/part-0.parquet",
+      gateway: "https://gw.ipfs-lens.dev",
+      kind: "independent",
+      url: "https://gw.ipfs-lens.dev/ipfs/bafyabc/property/part-0.parquet",
     });
-    expect(gatewayUrls("bafyabc").map((u) => u.gateway)).toContain("https://ipfs.filebase.io");
+    // independent gateways first, pinning providers' gateways last
+    expect(urls.map((u) => u.kind)).toEqual([
+      "independent",
+      "independent",
+      "independent",
+      "independent",
+      "pinning provider",
+      "pinning provider",
+    ]);
+    expect(urls.slice(4).map((u) => u.gateway)).toEqual([
+      "https://gateway.pinata.cloud",
+      "https://ipfs.filebase.io",
+    ]);
   });
   it("reads manifest + every verification*.json from the first dir that has them; CAR optional", () => {
     const base = mkdtempSync(join(tmpdir(), "pub-"));
@@ -69,6 +82,7 @@ describe("publications", () => {
     );
     const pub = getPublication(["/nonexistent", base], "r1");
     expect(pub.manifest?.objects[1]?.cid).toBe("bafyx");
+    expect(pub.manifest_cid).toBe(manifestSha256(JSON.stringify(manifest)));
     expect(pub.manifest?.pins[0]?.provider).toBe("pinata");
     expect(pub.verifications.map((v) => [v.file, v.data.verifier])).toEqual([
       ["verification-github-actions.json", "github-actions"],

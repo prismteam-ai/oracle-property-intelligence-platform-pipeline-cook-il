@@ -2,7 +2,7 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { ExtLink } from "../components.js";
-import { fmt, trpc } from "../trpc.js";
+import { fmt, fmtDate, invalidDate, trpc } from "../trpc.js";
 
 type Result = Awaited<ReturnType<typeof trpc.search.properties.query>>;
 const CHICAGO = { lat: 41.8781, lon: -87.6298 };
@@ -187,9 +187,9 @@ export function Explore() {
           )}
           {res && (
             <p data-testid="search-meta">
-              {res.total_in_radius} properties within {radius} mi of ({pin.lat}, {pin.lon}); showing{" "}
-              {res.properties.length}. Snapshot run {res.source.runId}, root CID{" "}
-              {res.source.rootCid ?? "—"}.
+              Showing {res.properties.length} of {res.total_in_radius} properties within {radius} mi
+              of ({pin.lat}, {pin.lon}). Snapshot run {res.source.runId}, root CID{" "}
+              {res.source.rootCid ?? "—"}, manifest CID {res.source.manifestCid ?? "—"}.
             </p>
           )}
           <div data-testid="results">
@@ -200,8 +200,15 @@ export function Explore() {
                 </div>
                 <div>
                   coordinates {p.lat}, {p.lon} · year built {fmt(p.year_built)} · roof age{" "}
-                  <b>{fmt(p.roof_age_years)} y</b> (basis {p.roof_age_basis ?? "—"}, confidence{" "}
-                  {p.roof_age_confidence ?? "—"}, anchor {fmt(p.roof_age_anchor_date)})
+                  {invalidDate(p.roof_age_anchor_date) ? (
+                    <b className="bad" data-testid="invalid-anchor">
+                      unknown
+                    </b>
+                  ) : (
+                    <b>{fmt(p.roof_age_years)} y</b>
+                  )}{" "}
+                  (basis {p.roof_age_basis ?? "—"}, confidence {p.roof_age_confidence ?? "—"},
+                  anchor {fmtDate(p.roof_age_anchor_date)})
                 </div>
                 <div>
                   owner {p.owner_name ?? "—"} · mail {p.mail_city ?? "—"}, {p.mail_state ?? "—"} ·
@@ -217,11 +224,11 @@ export function Explore() {
                     {p.permits.map((x) => (
                       <li key={x.permit_id}>
                         {x.is_roofing ? "ROOFING " : ""}permit {x.permit_id} · {x.status} (
-                        {x.status_is_open ? "open" : "closed"}) · issued {fmt(x.issued_at)} ·
+                        {x.status_is_open ? "open" : "closed"}) · issued {fmtDate(x.issued_at)} ·
                         open_days {fmt(x.open_days)} · contractor {x.contractor_name ?? "—"}
                         {x.contractor
-                          ? ` · license ${x.contractor.license_number ?? "—"} · BBB ${x.contractor.bbb_rating ?? `unavailable (${x.contractor.bbb_state})`}`
-                          : " · BBB unavailable (no contractor match)"}
+                          ? ` · license ${x.contractor.license_number ?? "—"} · BBB ${x.contractor.bbb_rating ?? `n/a (${x.contractor.bbb_state})`}`
+                          : " · BBB n/a (no contractor match)"}
                         {" · "}
                         <ExtLink href={x.source_url}>source</ExtLink>
                         {x.contractor?.bbb_url ? (

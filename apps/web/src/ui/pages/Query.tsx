@@ -71,7 +71,8 @@ export function Query() {
         <>
           <p data-testid="sql-meta">
             {res.rowCount} rows{res.truncated ? " (truncated at limit)" : ""} · {res.ms} ms · run{" "}
-            {res.source.runId} · root CID {res.source.rootCid ?? "—"}
+            {res.source.runId} · root CID {res.source.rootCid ?? "—"} · manifest CID{" "}
+            {res.source.manifestCid ?? "—"}
           </p>
           <Table
             testId="sql-result"

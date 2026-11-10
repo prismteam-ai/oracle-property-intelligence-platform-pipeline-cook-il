@@ -38,7 +38,12 @@ Dataset resolution at startup:
    `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook/web fixture [db] [publications dir]` regenerates it.
 
 Publications are read from `<PUBLICATIONS_DIR>/<run_id>/`, then the committed repo `publications/<run_id>/`, then
-the fixture dir (first `manifest.json` wins). Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
+the fixture dir (first `manifest.json` wins). A run row without `root_cid` / `manifest_cid` (for example when
+`publish` ran against another copy of the DuckDB file) takes them from `publications/<run_id>/manifest.json` and the
+`run.json` sidecar; `manifest_cid` is the sha256 of `manifest.json` and is computed when no sidecar exists. The
+provenance block (`source`) names the **newest published run at or before the current run** (`previous_run_id` chain,
+then lexically older publication dirs) as `publishedRunId`, so an unpublished latest run still carries the last
+published root CID on the run summary, `/runs`, SQL and Explore meta lines, the agent footer and every MCP `source`. Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
 manifest `{schema, run_id, created_at, root_cid, car, previous_run_id, previous_root_cid, ipns, objects, pins,
 origins}` and every `verification*.json` in the dir (`verification.json` from the pipeline host,
 `verification-github-actions.json` from CI). The CAR file is optional.
@@ -48,31 +53,35 @@ Endpoints: `GET /health` -> `{ok, runId, rootCid, dataset, commit}`, `GET /build
 
 ## Pages
 
-| Path                      | Content                                                                                                                                                                                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                       | Latest run: run_id, started/finished, status, sources (URL, records, fetched_at, note), provenance (root/manifest CID, served-from), county coverage, live table counts, deltas vs previous run, dead letters, limitations.                                   |
-| `/runs`                   | All runs with counts, deltas (+/~/−), dead letters, root and manifest CIDs, previous run; run ids link to `/publications/<run_id>`.                                                                                                                           |
-| `/publications[/:run_id]` | Manifest summary, gateway URLs derived from the CID (ipfs.io, dweb.link), artifact table (cid, name, size, codec, sha256, origins), verification table, CAR, previous CID chain, IPNS if present, raw manifest JSON.                                          |
-| `/query`                  | Read-only SQL console (single SELECT/WITH, LIMIT ≤ 1000, 10 s timeout) with sample queries for radius, roof > 15 y, open roofing permits with contractor + BBB, no ownership change > 10 y, out-of-area owners, lead shortlist, counts.                       |
-| `/explore`                | MapLibre map (OpenFreeMap liberty style). Click to drop a pin, radius, min roof age, open-roofing-only, min open years. Results list roof-age basis/confidence, coordinates, open_days, contractor, BBB, provenance (source_system, source_url, ingested_at). |
-| `/agent`                  | Chat with the two README prompts as one-click examples.                                                                                                                                                                                                       |
-| `/mcp`                    | MCP tool list, curl / Inspector examples, bearer-token note.                                                                                                                                                                                                  |
+| Path                      | Content                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                       | Latest run: run_id, started/finished, status, sources (dataset id, catalog URL, last fetched at / rows from the last run that fetched the source, watermark, this run's fetched/staged rows), provenance (root/manifest CID, served-from), county coverage, live table counts, deltas vs previous run, dead letters, limitations.                |
+| `/runs`                   | All runs with counts, deltas (+/~/−), dead letters, root and manifest CIDs, previous run; run ids link to `/publications/<run_id>`.                                                                                                                                                                                                              |
+| `/publications[/:run_id]` | Manifest summary, gateway URLs derived from the CID (independent gateways first, pinning providers' last, each labelled), artifact table (cid, name, size, codec, sha256, origins), every `verification*.json` ("pending" when none), CAR (on disk / GitHub Release link / not on host), previous CID chain, IPNS if present, raw manifest JSON. |
+| `/query`                  | Read-only SQL console (single SELECT/WITH, LIMIT ≤ 1000, 10 s timeout) with sample queries for radius, roof > 15 y, open roofing permits with contractor + BBB, no ownership change > 10 y, out-of-area owners, lead shortlist, counts.                                                                                                          |
+| `/explore`                | MapLibre map (OpenFreeMap liberty style). Click to drop a pin, radius, min roof age, open-roofing-only, min open years. Results list roof-age basis/confidence, coordinates, open_days, contractor, BBB, provenance (source_system, source_url, ingested_at).                                                                                    |
+| `/agent`                  | Chat with the two README prompts as one-click examples.                                                                                                                                                                                                                                                                                          |
+| `/mcp`                    | MCP tool list, curl / Inspector examples, bearer-token note.                                                                                                                                                                                                                                                                                     |
 
-Every number and source URL is rendered as text; key elements carry `data-testid`. Layout works at 390 / 768 / 1440 px.
+Every number and source URL is rendered as text; key elements carry `data-testid`. Layout works at 390 / 768 / 1440 px:
+tables sit in `overflow-x: auto` wrappers, CID / gateway links break anywhere, `#map` and tables inside chat answers
+are capped at 100 % width; the responsive e2e asserts `scrollWidth <= innerWidth` on every page after load and after
+its main interaction. Explore reports "Showing n of N" (N = all properties in the radius) and `BBB n/a (...)` when no
+rating is known.
 
 ## tRPC API (`/trpc`, `AppRouter` in `apps/web/src/api/router.ts`)
 
-| Procedure                   | Input                                                                                        | Output                                                                                                                               |
-| --------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `runs.latest` (query)       | –                                                                                            | `{run, source, previous, table_counts, coverage, dataset_origin, run_count}`                                                         |
-| `runs.list` (query)         | –                                                                                            | `Run[]`                                                                                                                              |
-| `runs.get` (query)          | `{run_id}`                                                                                   | `Run`                                                                                                                                |
-| `publications.get` (query)  | `{run_id}`                                                                                   | `{run, publication: {manifest, manifest_raw, verification, files, dir}, root_cid, manifest_cid, gateway_urls, artifacts[+gateways]}` |
-| `query.sql` (mutation)      | `{sql, limit?≤1000}`                                                                         | `{columns, rows, rowCount, truncated, ms, source}` (400 on forbidden SQL)                                                            |
-| `query.schema` (query)      | –                                                                                            | `[{name, columns: [{name, type}]}]`                                                                                                  |
-| `search.properties` (query) | `{lat, lon, radiusMiles≤50, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?≤500}` | `{properties: [property + distance_miles + permits: [permit + contractor]], total_in_radius, source}`                                |
-| `property.get` (query)      | `{pin14}`                                                                                    | `{property \| null, source}`                                                                                                         |
-| `agent.ask` (mutation)      | `{question}`                                                                                 | `{answer, steps: [{tool, args}], source, model}` (30 req/min/IP)                                                                     |
+| Procedure                   | Input                                                                                        | Output                                                                                                                                                                                 |
+| --------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `runs.latest` (query)       | –                                                                                            | `{run, source: {runId, rootCid, manifestCid, publishedRunId, syncedAt}, sources: [SourceCount + last_fetch + watermark], previous, table_counts, coverage, dataset_origin, run_count}` |
+| `runs.list` (query)         | –                                                                                            | `Run[]`                                                                                                                                                                                |
+| `runs.get` (query)          | `{run_id}`                                                                                   | `Run`                                                                                                                                                                                  |
+| `publications.get` (query)  | `{run_id}`                                                                                   | `{run, publication: {manifest, manifest_raw, verification, files, dir}, root_cid, manifest_cid, gateway_urls, artifacts[+gateways]}`                                                   |
+| `query.sql` (mutation)      | `{sql, limit?≤1000}`                                                                         | `{columns, rows, rowCount, truncated, ms, source}` (400 on forbidden SQL)                                                                                                              |
+| `query.schema` (query)      | –                                                                                            | `[{name, columns: [{name, type}]}]`                                                                                                                                                    |
+| `search.properties` (query) | `{lat, lon, radiusMiles≤50, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?≤500}` | `{properties: [property + distance_miles + permits: [permit + contractor]], total_in_radius, source}`                                                                                  |
+| `property.get` (query)      | `{pin14}`                                                                                    | `{property \| null, source}`                                                                                                                                                           |
+| `agent.ask` (mutation)      | `{question}`                                                                                 | `{answer, steps: [{tool, args}], source, model}` (30 req/min/IP)                                                                                                                       |
 
 Radius search: geohash prefix prefilter (precision chosen from the radius, centre + 8 neighbours) then exact haversine in
 SQL; ordered by distance, or by longest-open roofing permit when `openRoofingPermitsOnly` is set.
@@ -104,7 +113,14 @@ npx @modelcontextprotocol/inspector --transport http --server-url http://localho
 Vercel AI SDK `generateText` tool loop (`maxSteps: 8`) on `@ai-sdk/openai` `gpt-4.1-mini`. Tools: `geocode_place`
 (Nominatim with User-Agent, in-memory cache, built-in fallback for Chicago / Evanston / Oak Park / Skokie / Cicero),
 `find_properties`, `open_roofing_permits`, `run_sql_readonly` (same SQL guard, 200 rows). The system prompt requires
-pin14 / permit ids with `source_url`, explicit assumptions and a list of missing data (e.g. BBB unavailable). Example prompts:
+pin14 / permit ids with `source_url`, explicit assumptions and a list of missing data (e.g. BBB unavailable).
+
+Conversation memory: the UI keeps the chat in `sessionStorage` (per browser tab/session) and sends the prior turns as
+`messages`; the server returns `center` (last geocoded place or radius-tool centre) and `turn` (answer + a
+`(context: search centre lat …, lon …)` line) which the client stores as the assistant turn, so "near that area"
+resolves to the last search centre without geocoding again. Defaults fixed in the system prompt: "many years" =
+open for at least 3 years (`minOpenDays=1095`, stated as an assumption); every open permit lists the contractor's BBB
+rating or `BBB: not available (bbb_state=...)`. Example prompts:
 
 - "Which properties in Cook County within five miles of Evanston have roofs older than 15 years?"
 - "Which properties near that area have open roofing permits that have been open for many years, and who is the listed contractor?"
@@ -119,6 +135,11 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
 ```
 
 ## Limitations
+
+- Date sanity is display-side only: roof-age anchors and permit dates before 1900 or after today are rendered as
+  "invalid date (source)" on `/explore`, excluded from roof-age filtering/ordering in `search.properties` and from the
+  roof-age sample queries (`VALID_ANCHOR_SQL` in `apps/web/src/search/properties.ts`). The transform-side quarantine
+  of those source rows is tracked as pipeline work and not done here; the Parquet/DuckDB rows are unchanged.
 
 - Fixture data is synthetic; the fixture banner and `FIXTURE DATA` limitations disappear as soon as the real
   `data/cook_il.duckdb` or a Parquet run directory exists.

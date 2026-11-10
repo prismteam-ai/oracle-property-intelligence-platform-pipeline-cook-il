@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const VIEWPORTS = [
   { name: "phone", width: 390, height: 844 },
@@ -81,7 +81,9 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
   await page.getByTestId("open-only").check();
   await page.getByTestId("min-open-years").fill("3");
   await page.getByTestId("search").click();
-  await expect(page.getByTestId("search-meta")).toContainText("properties within 2 mi");
+  await expect(page.getByTestId("search-meta")).toContainText(
+    /Showing \d+ of \d+ properties within 2 mi/,
+  );
   const results = page.getByTestId("result");
   expect(await results.count()).toBeGreaterThan(0);
   const first = results.first();
@@ -89,6 +91,7 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
   await expect(first).toContainText("basis");
   await expect(first).toContainText("ROOFING permit");
   await expect(first).toContainText("open_days");
+  await expect(first).toContainText(/BBB (n\/a|[A-F][+-]?)/);
   await expect(first).toContainText("provenance: fixture");
   await expect(first.locator('a[href^="https://"]').first()).toBeVisible();
 });
@@ -124,16 +127,55 @@ test("mcp endpoint answers tools/list with the bearer token", async ({ request }
   expect((await request.post("/mcp", { data: {} })).status()).toBe(401);
 });
 
+/** After loading and after the page's main interaction, the document must not scroll sideways. */
+const INTERACT: Record<string, (page: Page) => Promise<void>> = {
+  "/": async (page) => {
+    await expect(page.getByTestId("sources")).toBeVisible();
+  },
+  "/runs": async (page) => {
+    await expect(page.getByTestId("runs")).toBeVisible();
+  },
+  "/publications": async (page) => {
+    await expect(page.getByTestId("manifest-json")).toBeVisible();
+    await page.locator("details summary").first().click();
+  },
+  "/query": async (page) => {
+    await page.getByTestId("sample-query").filter({ hasText: "Open roofing permits" }).click();
+    await page.getByTestId("run-sql").click();
+    await expect(page.getByTestId("sql-result")).toBeVisible();
+  },
+  "/explore": async (page) => {
+    await page.getByTestId("open-only").check();
+    await page.getByTestId("search").click();
+    await expect(page.getByTestId("search-meta")).toContainText("Showing");
+  },
+  "/agent": async (page) => {
+    await page.getByTestId("agent-example").first().click();
+    await expect(page.getByTestId("msg-agent")).toBeVisible({ timeout: 60_000 });
+  },
+  "/mcp": async (page) => {
+    await expect(page.getByTestId("mcp-tools")).toBeVisible();
+  },
+};
+
 for (const vp of VIEWPORTS) {
-  test(`responsive ${vp.name}: no horizontal overflow on every page`, async ({ page }) => {
+  test(`responsive ${vp.name}: no horizontal overflow on every page, before and after interaction`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: vp.width, height: vp.height });
-    for (const path of ["/", "/runs", "/publications", "/query", "/explore", "/agent", "/mcp"]) {
+    const noOverflow = async (label: string) => {
+      const [scrollWidth, innerWidth] = await page.evaluate(() => [
+        document.documentElement.scrollWidth,
+        window.innerWidth,
+      ]);
+      expect(scrollWidth, label).toBeLessThanOrEqual(innerWidth);
+    };
+    for (const [path, interact] of Object.entries(INTERACT)) {
       await page.goto(path);
       await expect(page.locator("main h1")).toBeVisible();
-      const overflow = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      );
-      expect(overflow, `${path} at ${vp.name}`).toBeLessThanOrEqual(1);
+      await noOverflow(`${path} at ${vp.name} after load`);
+      await interact(page);
+      await noOverflow(`${path} at ${vp.name} after interaction`);
     }
   });
 }

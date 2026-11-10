@@ -7,7 +7,7 @@ import { makeFixture } from "../../../../fixtures/make-fixture.js";
 import { openDataset, type Dataset } from "../db/duck.js";
 import { createContext, type AppContext } from "../context.js";
 import { loadEnv } from "../env.js";
-import { askAgent } from "./agent.js";
+import { LONG_OPEN_DAYS, SYSTEM_PROMPT, askAgent, assistantTurn, centerOf } from "./agent.js";
 import { geocodePlace } from "./geocode.js";
 import { agentTools, compact } from "./tools.js";
 
@@ -75,6 +75,87 @@ describe("askAgent (mocked model)", () => {
       },
     ]);
     expect(res.source.runId).toMatch(/^2026-11-10/);
+  });
+  it("sends prior turns to the model and derives the search centre from geocode + radius tools", async () => {
+    let call = 0;
+    const prompts: unknown[] = [];
+    const model = new MockLanguageModelV1({
+      // eslint-disable-next-line @typescript-eslint/require-await
+      doGenerate: async (opts) => {
+        prompts.push(opts.prompt);
+        call++;
+        const base = {
+          rawCall: { rawPrompt: null, rawSettings: {} },
+          usage: { promptTokens: 1, completionTokens: 1 },
+        };
+        if (call === 1)
+          return {
+            ...base,
+            finishReason: "tool-calls" as const,
+            toolCalls: [
+              {
+                toolCallType: "function" as const,
+                toolCallId: "g1",
+                toolName: "geocode_place",
+                args: JSON.stringify({ place: "Skokie" }),
+              },
+            ],
+          };
+        if (call === 2)
+          return {
+            ...base,
+            finishReason: "tool-calls" as const,
+            toolCalls: [
+              {
+                toolCallType: "function" as const,
+                toolCallId: "p1",
+                toolName: "open_roofing_permits",
+                args: JSON.stringify({
+                  lat: 42.0324,
+                  lon: -87.7416,
+                  radiusMiles: 5,
+                  minOpenDays: LONG_OPEN_DAYS,
+                  limit: 3,
+                }),
+              },
+            ],
+          };
+        return { ...base, finishReason: "stop" as const, text: "answer two" };
+      },
+    });
+    const history = [
+      { role: "user" as const, content: "roofs near Evanston?" },
+      {
+        role: "assistant" as const,
+        content:
+          'prior answer\n\n(context: search centre lat 42.0451, lon -87.6877 for "Evanston")',
+      },
+    ];
+    const res = await askAgent(ctxWith(model), "near that area, open for many years?", history);
+    // prior turns precede the new question in what the model sees
+    const first = prompts[0] as { role: string; content: unknown }[];
+    expect(first.filter((m) => m.role !== "system").map((m) => m.role)).toEqual([
+      "user",
+      "assistant",
+      "user",
+    ]);
+    expect(JSON.stringify(first)).toContain("search centre lat 42.0451");
+    expect(res.center).toEqual({ lat: 42.0324, lon: -87.7416, place: "Skokie" });
+    expect(res.turn).toBe(assistantTurn({ answer: "answer two", center: res.center }));
+    expect(res.turn).toContain("(context: search centre lat 42.0324, lon -87.7416");
+    expect(res.steps.map((s) => s.tool)).toEqual(["geocode_place", "open_roofing_permits"]);
+  });
+  it("system prompt fixes the defaults: many years = 1,095 days, BBB line per contractor, reuse the last centre", () => {
+    expect(LONG_OPEN_DAYS).toBe(1095);
+    expect(SYSTEM_PROMPT).toContain("minOpenDays=1095");
+    expect(SYSTEM_PROMPT).toContain("BBB: not available");
+    expect(SYSTEM_PROMPT).toContain("most recent search centre");
+    expect(centerOf([{ tool: "find_properties", args: { lat: 1, lon: 2 } }])).toEqual({
+      lat: 1,
+      lon: 2,
+      place: null,
+    });
+    expect(centerOf([{ tool: "run_sql_readonly", args: { sql: "select 1" } }])).toBeNull();
   });
   it("reports a disabled agent without a model", async () => {
     const res = await askAgent(ctxWith(null), "anything");

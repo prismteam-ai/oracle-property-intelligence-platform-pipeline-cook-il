@@ -33,6 +33,8 @@ export const Manifest = z.object({
     size: z.number().int(),
     sha256: z.string(),
     cid: z.string().nullable(),
+    /** where the CAR can be downloaded when it is not kept on the serving host (e.g. a GitHub Release asset) */
+    release_url: z.string().url().optional(),
   }),
   previous_run_id: z.string().nullable(),
   previous_root_cid: z.string().nullable(),
@@ -73,12 +75,13 @@ export const Verification = z.object({
 });
 export type Verification = z.infer<typeof Verification>;
 
+/** Independent gateways first, then the gateways of the pinning providers we upload to. */
 export const DEFAULT_GATEWAYS = [
+  "https://gw.ipfs-lens.dev/ipfs/",
+  "https://dget.top/ipfs/",
   "https://ipfs.io/ipfs/",
   "https://dweb.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
-  "https://gw.ipfs-lens.dev/ipfs/",
-  "https://dget.top/ipfs/",
   "https://ipfs.filebase.io/ipfs/",
 ];
 
@@ -308,6 +311,7 @@ export interface PublishOptions {
   outDir: string; // publications/<run_id> (manifest.json, verification.json; committed)
   carDir?: string; // where the CAR goes (default outDir); keep large CARs out of the repo
   previous: { runId: string; rootCid: string } | null;
+  carReleaseUrl?: string;
   filebase: FilebaseConfig | null;
   pinataJwt: string | null;
   gateways?: string[];
@@ -384,7 +388,13 @@ export async function publishRun(
     run_id: o.runId,
     created_at: new Date().toISOString(),
     root_cid: dag.rootCid,
-    car: { name: `${o.runId}.car`, size: car.size, sha256: car.sha256, cid: null },
+    car: {
+      name: `${o.runId}.car`,
+      size: car.size,
+      sha256: car.sha256,
+      cid: null,
+      ...(o.carReleaseUrl ? { release_url: o.carReleaseUrl } : {}),
+    },
     previous_run_id: o.previous?.runId ?? null,
     previous_root_cid: o.previous?.rootCid ?? null,
     ipns: null,

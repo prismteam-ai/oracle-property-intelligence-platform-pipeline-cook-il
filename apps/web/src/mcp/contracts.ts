@@ -7,6 +7,8 @@ export const SourceSchema = z.object({
   rootCid: z.string().nullable(),
   manifestCid: z.string().nullable(),
   tablesCid: z.string().nullable().optional(),
+  /** run whose publication the CIDs come from (newest published run at or before runId) */
+  publishedRunId: z.string().nullable().optional(),
   syncedAt: z.string(),
 });
 export type Source = z.infer<typeof SourceSchema>;
