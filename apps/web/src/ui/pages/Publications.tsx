@@ -1,24 +1,24 @@
-import { Link, useParams } from 'react-router-dom';
-import { ExtLink, Kv, Status, Table } from '../components.js';
-import { fmt, trpc, useAsync } from '../trpc.js';
+import { Link, useParams } from "react-router-dom";
+import { ExtLink, Kv, Status, Table } from "../components.js";
+import { fmt, trpc, useAsync } from "../trpc.js";
 
 export function Publications() {
   const { runId } = useParams();
-  const runs = useAsync(() => trpc.runs.list.query(), 'runs');
+  const runs = useAsync(() => trpc.runs.list.query(), "runs");
   const latest = runs.data?.[0]?.run_id;
   const id = runId ?? latest;
   const q = useAsync(
     () => (id ? trpc.publications.get.query({ run_id: id }) : Promise.resolve(null)),
-    `pub:${id ?? ''}`,
+    `pub:${id ?? ""}`,
   );
   if (!runs.data) return <Status loading={runs.loading} error={runs.error} />;
   const chain = runs.data.map((r) => r.run_id);
   const d = q.data;
   return (
     <>
-      <h1>Publications {id ? `· ${id}` : ''}</h1>
+      <h1>Publications {id ? `· ${id}` : ""}</h1>
       <p>
-        Runs:{' '}
+        Runs:{" "}
         {chain.map((r) => (
           <span key={r}>
             <Link
@@ -27,7 +27,7 @@ export function Publications() {
               style={{ fontWeight: r === id ? 600 : 400 }}
             >
               {r}
-            </Link>{' '}
+            </Link>{" "}
           </span>
         ))}
       </p>
@@ -37,36 +37,36 @@ export function Publications() {
           <Kv
             testId="pub-summary"
             items={[
-              ['run_id', d.run?.run_id ?? id ?? '—'],
-              ['root CID', <span data-testid="root-cid">{fmt(d.root_cid)}</span>],
-              ['manifest CID', fmt(d.manifest_cid)],
-              ['tables CID', fmt(d.publication.manifest?.tables_cid)],
-              ['previous root CID', fmt(d.publication.manifest?.previous_root_cid ?? null)],
+              ["run_id", d.run?.run_id ?? id ?? "—"],
+              ["root CID", <span data-testid="root-cid">{fmt(d.root_cid)}</span>],
+              ["manifest CID", fmt(d.manifest_cid)],
+              ["tables CID", fmt(d.publication.manifest?.tables_cid)],
+              ["previous root CID", fmt(d.publication.manifest?.previous_root_cid ?? null)],
               [
-                'previous run',
+                "previous run",
                 d.run?.previous_run_id ? (
                   <Link to={`/publications/${d.run.previous_run_id}`}>{d.run.previous_run_id}</Link>
                 ) : (
-                  '—'
+                  "—"
                 ),
               ],
               [
-                'IPNS',
+                "IPNS",
                 d.publication.manifest?.ipns
                   ? `${d.publication.manifest.ipns.name} → ${d.publication.manifest.ipns.resolved_cid}`
-                  : 'not used',
+                  : "not used",
               ],
               [
-                'CAR',
+                "CAR",
                 d.publication.manifest?.car
                   ? `${d.publication.manifest.car.name} · cid ${fmt(d.publication.manifest.car.cid)} · ${fmt(d.publication.manifest.car.size)} bytes`
-                  : '—',
+                  : "—",
               ],
               [
-                'manifest file',
-                d.publication.dir ? `${d.publication.dir}/manifest.json` : 'not found on disk',
+                "manifest file",
+                d.publication.dir ? `${d.publication.dir}/manifest.json` : "not found on disk",
               ],
-              ['files on disk', d.publication.files.join(', ') || '—'],
+              ["files on disk", d.publication.files.join(", ") || "—"],
             ]}
           />
           <h2>Root gateway URLs (derived from the CID)</h2>
@@ -84,13 +84,13 @@ export function Publications() {
             testId="artifacts"
             rows={d.artifacts}
             columns={[
-              { key: 'name' },
-              { key: 'cid' },
-              { key: 'size', label: 'size (bytes)' },
-              { key: 'codec' },
-              { key: 'sha256', render: (a) => fmt(a.sha256 ?? null) },
+              { key: "name" },
+              { key: "cid" },
+              { key: "size", label: "size (bytes)" },
+              { key: "codec" },
+              { key: "sha256", render: (a) => fmt(a.sha256 ?? null) },
               {
-                key: 'gateways',
+                key: "gateways",
                 render: (a) =>
                   a.gateways.map((g) => (
                     <div key={g.gateway}>
@@ -98,7 +98,7 @@ export function Publications() {
                     </div>
                   )),
               },
-              { key: 'origins', render: (a) => (a.origins ?? []).join(' ') || '—', wrap: true },
+              { key: "origins", render: (a) => (a.origins ?? []).join(" ") || "—", wrap: true },
             ]}
           />
 
@@ -108,29 +108,33 @@ export function Publications() {
               testId="verification"
               rows={d.publication.verification.results}
               columns={[
-                { key: 'gateway' },
-                { key: 'name', render: (r) => fmt(r.name) },
-                { key: 'cid' },
-                { key: 'status', render: (r) => String(r.status) },
+                { key: "gateway" },
+                { key: "name", render: (r) => fmt(r.name) },
+                { key: "cid" },
+                { key: "status", render: (r) => String(r.status) },
                 {
-                  key: 'size_match',
+                  key: "size_match",
                   render: (r) => (
-                    <span className={r.size_match ? 'ok' : r.size_match === false ? 'bad' : 'muted'}>
+                    <span
+                      className={r.size_match ? "ok" : r.size_match === false ? "bad" : "muted"}
+                    >
                       {fmt(r.size_match)}
                     </span>
                   ),
                 },
                 {
-                  key: 'digest_match',
+                  key: "digest_match",
                   render: (r) => (
-                    <span className={r.digest_match ? 'ok' : r.digest_match === false ? 'bad' : 'muted'}>
+                    <span
+                      className={r.digest_match ? "ok" : r.digest_match === false ? "bad" : "muted"}
+                    >
                       {fmt(r.digest_match)}
                     </span>
                   ),
                 },
-                { key: 'fetched_at' },
-                { key: 'url', render: (r) => <ExtLink href={r.url} /> },
-                { key: 'error', render: (r) => fmt(r.error ?? null), wrap: true },
+                { key: "fetched_at" },
+                { key: "url", render: (r) => <ExtLink href={r.url} /> },
+                { key: "error", render: (r) => fmt(r.error ?? null), wrap: true },
               ]}
             />
           ) : (
@@ -140,7 +144,9 @@ export function Publications() {
           )}
 
           <h2>Manifest JSON</h2>
-          <pre data-testid="manifest-json">{d.publication.manifest_raw ?? 'no manifest.json found'}</pre>
+          <pre data-testid="manifest-json">
+            {d.publication.manifest_raw ?? "no manifest.json found"}
+          </pre>
         </>
       )}
     </>

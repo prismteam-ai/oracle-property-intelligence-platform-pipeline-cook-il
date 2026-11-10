@@ -1,7 +1,7 @@
-import type { LanguageModel } from 'ai';
-import type { Dataset } from './db/duck.js';
-import type { Env } from './env.js';
-import { datasetInfo, type DatasetInfo } from './runs.js';
+import type { LanguageModel } from "ai";
+import type { Dataset } from "./db/duck.js";
+import type { Env } from "./env.js";
+import { datasetInfo, type DatasetInfo } from "./runs.js";
 
 export interface AppContext {
   ds: Dataset;
@@ -12,7 +12,7 @@ export interface AppContext {
   info: () => Promise<DatasetInfo>;
 }
 
-export function createContext(base: Omit<AppContext, 'info'>): AppContext {
+export function createContext(base: Omit<AppContext, "info">): AppContext {
   let cached: Promise<DatasetInfo> | null = null;
   return {
     ...base,

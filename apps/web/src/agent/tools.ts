@@ -1,10 +1,10 @@
-import { tool } from 'ai';
-import { z } from 'zod';
-import type { AppContext } from '../context.js';
-import { guardSql } from '../db/sqlguard.js';
-import { findProperties } from '../search/properties.js';
-import type { PropertyWithPermits } from '../mcp/contracts.js';
-import { geocodePlace } from './geocode.js';
+import { tool } from "ai";
+import { z } from "zod";
+import type { AppContext } from "../context.js";
+import { guardSql } from "../db/sqlguard.js";
+import { findProperties } from "../search/properties.js";
+import type { PropertyWithPermits } from "../mcp/contracts.js";
+import { geocodePlace } from "./geocode.js";
 
 /** Trim a property to what the model needs to cite (pin14, permit ids, source URLs). */
 export function compact(p: PropertyWithPermits) {
@@ -34,7 +34,7 @@ export function compact(p: PropertyWithPermits) {
         work_description: x.work_description,
         contractor_name: x.contractor_name,
         bbb_rating: x.contractor?.bbb_rating ?? null,
-        bbb_state: x.contractor?.bbb_state ?? 'unknown',
+        bbb_state: x.contractor?.bbb_state ?? "unknown",
         bbb_url: x.contractor?.bbb_url ?? null,
         source_url: x.source_url,
       })),
@@ -50,14 +50,17 @@ export function agentTools(ctx: AppContext) {
   };
   return {
     geocode_place: tool({
-      description: 'Resolve a Cook County, IL place name (city, neighbourhood, address) to lat/lon.',
+      description:
+        "Resolve a Cook County, IL place name (city, neighbourhood, address) to lat/lon.",
       parameters: z.object({ place: z.string() }),
       execute: async ({ place }) =>
-        (await geocodePlace(place, ctx.env.NOMINATIM_URL)) ?? { error: `could not geocode "${place}"` },
+        (await geocodePlace(place, ctx.env.NOMINATIM_URL)) ?? {
+          error: `could not geocode "${place}"`,
+        },
     }),
     find_properties: tool({
       description:
-        'Properties within radiusMiles of a point, optionally only roofs at least minRoofAge years old. Returns roof-age basis/confidence and source URLs.',
+        "Properties within radiusMiles of a point, optionally only roofs at least minRoofAge years old. Returns roof-age basis/confidence and source URLs.",
       parameters: z.object({ ...radius, minRoofAge: z.number().min(0).optional() }),
       execute: async (input) => {
         const r = await findProperties(ctx.ds, input);
@@ -71,7 +74,7 @@ export function agentTools(ctx: AppContext) {
     }),
     open_roofing_permits: tool({
       description:
-        'Properties within radiusMiles that have an OPEN roofing permit, longest-open first, with contractor and BBB rating when available.',
+        "Properties within radiusMiles that have an OPEN roofing permit, longest-open first, with contractor and BBB rating when available.",
       parameters: z.object({ ...radius, minOpenDays: z.number().int().min(0).default(0) }),
       execute: async (input) => {
         const r = await findProperties(ctx.ds, { ...input, openRoofingPermitsOnly: true });
@@ -85,7 +88,7 @@ export function agentTools(ctx: AppContext) {
     }),
     run_sql_readonly: tool({
       description:
-        'Run one read-only SELECT over tables property, permit, contractor, business, sale, run (DuckDB SQL, max 200 rows).',
+        "Run one read-only SELECT over tables property, permit, contractor, business, sale, run (DuckDB SQL, max 200 rows).",
       parameters: z.object({ sql: z.string() }),
       execute: async ({ sql }) => {
         try {

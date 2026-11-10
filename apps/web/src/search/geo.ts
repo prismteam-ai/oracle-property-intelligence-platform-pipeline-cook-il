@@ -1,4 +1,4 @@
-import ngeohash from 'ngeohash';
+import ngeohash from "ngeohash";
 
 export const EARTH_RADIUS_MILES = 3958.7613;
 
@@ -6,7 +6,9 @@ export function haversineMiles(lat1: number, lon1: number, lat2: number, lon2: n
   const toRad = (d: number) => (d * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_MILES * Math.asin(Math.sqrt(a));
 }
 
@@ -39,7 +41,7 @@ export function radiusWhere(
   radiusMiles: number,
 ): { sql: string; params: (string | number)[] } {
   const { precision, prefixes } = geohashPrefixes(lat, lon, radiusMiles);
-  const placeholders = prefixes.map(() => '?').join(', ');
+  const placeholders = prefixes.map(() => "?").join(", ");
   return {
     sql: `substr(geohash6, 1, ${precision}) IN (${placeholders}) AND ${haversineSql(lat, lon)} <= ?`,
     params: [...prefixes, radiusMiles],

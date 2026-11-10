@@ -1,6 +1,6 @@
 // MCP tool contracts. The roofing CRM consumes exactly these shapes; keep changes additive.
-import { z } from 'zod';
-import { ContractorSchema, PermitSchema, PropertySchema } from '../contract.js';
+import { z } from "zod";
+import { ContractorSchema, PermitSchema, PropertySchema } from "../contract.js";
 
 export const SourceSchema = z.object({
   runId: z.string(),
@@ -24,13 +24,20 @@ export const GetDatasetInfoOutput = z.object({
 
 export const GetSchemaOutput = z.object({
   tables: z.array(
-    z.object({ name: z.string(), columns: z.array(z.object({ name: z.string(), type: z.string() })) }),
+    z.object({
+      name: z.string(),
+      columns: z.array(z.object({ name: z.string(), type: z.string() })),
+    }),
   ),
   source: SourceSchema,
 });
 
 export const QueryDatasetInput = z.object({
-  sql: z.string().min(1).max(20_000).describe('One read-only SELECT or WITH statement over the query tables'),
+  sql: z
+    .string()
+    .min(1)
+    .max(20_000)
+    .describe("One read-only SELECT or WITH statement over the query tables"),
   limit: z.number().int().min(1).max(1000).default(100),
 });
 export const QueryDatasetOutput = z.object({
@@ -45,19 +52,24 @@ export const FindPropertiesInput = z.object({
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   radiusMiles: z.number().positive().max(50),
-  minRoofAge: z.number().min(0).optional().describe('Only roofs at least this many years old'),
-  openRoofingPermitsOnly: z.boolean().optional().describe('Only properties with an open roofing permit'),
+  minRoofAge: z.number().min(0).optional().describe("Only roofs at least this many years old"),
+  openRoofingPermitsOnly: z
+    .boolean()
+    .optional()
+    .describe("Only properties with an open roofing permit"),
   minOpenDays: z
     .number()
     .int()
     .min(0)
     .optional()
-    .describe('With openRoofingPermitsOnly: permit open at least this many days'),
+    .describe("With openRoofingPermitsOnly: permit open at least this many days"),
   limit: z.number().int().min(1).max(500).default(50),
 });
 export type FindPropertiesInput = z.infer<typeof FindPropertiesInput>;
 
-export const PermitWithContractor = PermitSchema.extend({ contractor: ContractorSchema.nullable() });
+export const PermitWithContractor = PermitSchema.extend({
+  contractor: ContractorSchema.nullable(),
+});
 export const PropertyWithPermits = PropertySchema.extend({
   distance_miles: z.number().nullable(),
   permits: z.array(PermitWithContractor),
@@ -71,4 +83,7 @@ export const FindPropertiesOutput = z.object({
 });
 
 export const GetPropertyInput = z.object({ pin14: z.string().regex(/^\d{14}$/) });
-export const GetPropertyOutput = z.object({ property: PropertyWithPermits.nullable(), source: SourceSchema });
+export const GetPropertyOutput = z.object({
+  property: PropertyWithPermits.nullable(),
+  source: SourceSchema,
+});

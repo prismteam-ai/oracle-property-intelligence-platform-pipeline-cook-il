@@ -1,10 +1,10 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig } from "@playwright/test";
 
 const port = 8089;
-const dir = process.env.E2E_DIR ?? '/tmp/cook-il-e2e';
+const dir = process.env.E2E_DIR ?? "/tmp/cook-il-e2e";
 
 export default defineConfig({
-  testDir: 'e2e',
+  testDir: "e2e",
   timeout: 60_000,
   use: { baseURL: `http://localhost:${port}` },
   webServer: {

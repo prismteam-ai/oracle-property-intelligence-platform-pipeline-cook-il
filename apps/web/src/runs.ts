@@ -1,10 +1,10 @@
-import type { Dataset, Row } from './db/duck.js';
-import { RunSchema, type Run } from './contract.js';
-import { TABLES } from './db/duck.js';
+import type { Dataset, Row } from "./db/duck.js";
+import { RunSchema, type Run } from "./contract.js";
+import { TABLES } from "./db/duck.js";
 
 function json(v: unknown): unknown {
   let out = v;
-  for (let i = 0; i < 2 && typeof out === 'string'; i++) {
+  for (let i = 0; i < 2 && typeof out === "string"; i++) {
     try {
       out = JSON.parse(out);
     } catch {
@@ -30,18 +30,18 @@ export function rowToRun(row: Row): Run {
 }
 
 export async function listRuns(ds: Dataset): Promise<Run[]> {
-  const rows = await ds.query('SELECT * FROM run ORDER BY started_at DESC');
+  const rows = await ds.query("SELECT * FROM run ORDER BY started_at DESC");
   return rows.map(rowToRun);
 }
 
 export async function getRun(ds: Dataset, runId: string): Promise<Run | null> {
-  const rows = await ds.query('SELECT * FROM run WHERE run_id = ?', [runId]);
+  const rows = await ds.query("SELECT * FROM run WHERE run_id = ?", [runId]);
   const row = rows[0];
   return row ? rowToRun(row) : null;
 }
 
 export async function latestRun(ds: Dataset): Promise<Run | null> {
-  const rows = await ds.query('SELECT * FROM run ORDER BY started_at DESC LIMIT 1');
+  const rows = await ds.query("SELECT * FROM run ORDER BY started_at DESC LIMIT 1");
   const row = rows[0];
   return row ? rowToRun(row) : null;
 }
@@ -92,14 +92,19 @@ export async function coverage(ds: Dataset): Promise<Coverage> {
   );
   const n = (v: unknown) => (v === null || v === undefined ? 0 : Number(v));
   return {
-    county: 'Cook County, IL',
+    county: "Cook County, IL",
     municipalities: n(p?.munis),
     properties_with_coordinates: n(p?.with_coords),
     properties_total: n(p?.total),
     bbox:
       p?.min_lat === null || p?.min_lat === undefined
         ? null
-        : { min_lat: n(p.min_lat), max_lat: n(p.max_lat), min_lon: n(p.min_lon), max_lon: n(p.max_lon) },
+        : {
+            min_lat: n(p.min_lat),
+            max_lat: n(p.max_lat),
+            min_lon: n(p.min_lon),
+            max_lon: n(p.max_lon),
+          },
     roofing_permits: n(pm?.roofing),
     open_roofing_permits: n(pm?.open_roofing),
     long_open_roofing_permits: n(pm?.long_open),
@@ -115,8 +120,8 @@ export async function coverage(ds: Dataset): Promise<Coverage> {
   };
 }
 
-import { getPublication } from './publications.js';
-import type { Source } from './mcp/contracts.js';
+import { getPublication } from "./publications.js";
+import type { Source } from "./mcp/contracts.js";
 
 export interface DatasetInfo {
   run: Run;
@@ -126,7 +131,7 @@ export interface DatasetInfo {
 /** Latest run + the provenance block every API/MCP response carries. Snapshot is immutable per process, so cache it. */
 export async function datasetInfo(ds: Dataset, pubDirs: string[]): Promise<DatasetInfo> {
   const run = await latestRun(ds);
-  if (!run) throw new Error('dataset has no run rows');
+  if (!run) throw new Error("dataset has no run rows");
   const pub = getPublication(pubDirs, run.run_id);
   return {
     run,

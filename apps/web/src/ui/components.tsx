@@ -1,15 +1,15 @@
-import type { ReactNode } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import { fmt } from './trpc.js';
+import type { ReactNode } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { fmt } from "./trpc.js";
 
 const NAV = [
-  ['/', 'Run summary'],
-  ['/runs', 'Run history'],
-  ['/publications', 'Publications'],
-  ['/query', 'SQL query'],
-  ['/explore', 'Explore map'],
-  ['/agent', 'Agent'],
-  ['/mcp', 'MCP'],
+  ["/", "Run summary"],
+  ["/runs", "Run history"],
+  ["/publications", "Publications"],
+  ["/query", "SQL query"],
+  ["/explore", "Explore map"],
+  ["/agent", "Agent"],
+  ["/mcp", "MCP"],
 ] as const;
 
 export function Layout() {
@@ -22,8 +22,8 @@ export function Layout() {
             <NavLink
               key={to}
               to={to}
-              end={to === '/'}
-              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
+              end={to === "/"}
+              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
             >
               {label}
             </NavLink>
@@ -61,7 +61,7 @@ export function Kv({ items, testId }: { items: [string, ReactNode][]; testId?: s
   return (
     <dl className="kv" data-testid={testId}>
       {items.map(([k, v]) => (
-        <div key={k} style={{ display: 'contents' }}>
+        <div key={k} style={{ display: "contents" }}>
           <dt>{k}</dt>
           <dd>{v}</dd>
         </div>
@@ -74,7 +74,7 @@ export function Table<T extends object>({
   rows,
   columns,
   testId,
-  empty = 'No rows.',
+  empty = "No rows.",
 }: {
   rows: T[];
   columns: { key: string; label?: string; render?: (row: T) => ReactNode; wrap?: boolean }[];
@@ -88,7 +88,7 @@ export function Table<T extends object>({
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} className={c.wrap ? 'wrap' : undefined}>
+              <th key={c.key} className={c.wrap ? "wrap" : undefined}>
                 {c.label ?? c.key}
               </th>
             ))}
@@ -98,7 +98,7 @@ export function Table<T extends object>({
           {rows.map((r, i) => (
             <tr key={i}>
               {columns.map((c) => (
-                <td key={c.key} className={c.wrap ? 'wrap' : undefined}>
+                <td key={c.key} className={c.wrap ? "wrap" : undefined}>
                   {c.render ? c.render(r) : fmt((r as Record<string, unknown>)[c.key])}
                 </td>
               ))}
@@ -126,7 +126,13 @@ export function Status({ loading, error }: { loading: boolean; error: string | n
   return null;
 }
 
-export const ExtLink = ({ href, children }: { href: string | null | undefined; children?: ReactNode }) =>
+export const ExtLink = ({
+  href,
+  children,
+}: {
+  href: string | null | undefined;
+  children?: ReactNode;
+}) =>
   href ? (
     <a href={href} target="_blank" rel="noreferrer">
       {children ?? href}
@@ -136,11 +142,11 @@ export const ExtLink = ({ href, children }: { href: string | null | undefined; c
   );
 
 export function FixtureBanner({ limitations }: { limitations: string[] }) {
-  if (!limitations.some((l) => l.startsWith('FIXTURE'))) return null;
+  if (!limitations.some((l) => l.startsWith("FIXTURE"))) return null;
   return (
     <div className="banner" data-testid="fixture-banner">
-      FIXTURE DATA: this snapshot is synthetic (generated locally because no pipeline output was found).
-      Counts, records and CIDs are placeholders, not real Cook County data.
+      FIXTURE DATA: this snapshot is synthetic (generated locally because no pipeline output was
+      found). Counts, records and CIDs are placeholders, not real Cook County data.
     </div>
   );
 }

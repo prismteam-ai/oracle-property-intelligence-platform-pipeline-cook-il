@@ -1,8 +1,8 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import type { AppContext } from '../context.js';
-import { guardSql } from '../db/sqlguard.js';
-import { findProperties, getProperty, tableSchema } from '../search/properties.js';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import type { AppContext } from "../context.js";
+import { guardSql } from "../db/sqlguard.js";
+import { findProperties, getProperty, tableSchema } from "../search/properties.js";
 import {
   FindPropertiesInput,
   FindPropertiesOutput,
@@ -12,55 +12,69 @@ import {
   GetSchemaOutput,
   QueryDatasetInput,
   QueryDatasetOutput,
-} from './contracts.js';
+} from "./contracts.js";
 
-type ToolResult = { content: { type: 'text'; text: string }[]; structuredContent: Record<string, unknown> };
+type ToolResult = {
+  content: { type: "text"; text: string }[];
+  structuredContent: Record<string, unknown>;
+};
 const ok = (out: Record<string, unknown>): ToolResult => ({
-  content: [{ type: 'text', text: JSON.stringify(out) }],
+  content: [{ type: "text", text: JSON.stringify(out) }],
   structuredContent: out,
 });
 
 export const MCP_TOOLS = [
-  'getDatasetInfo',
-  'getSchema',
-  'queryDataset',
-  'findProperties',
-  'getProperty',
+  "getDatasetInfo",
+  "getSchema",
+  "queryDataset",
+  "findProperties",
+  "getProperty",
 ] as const;
 
 export function createMcpServer(ctx: AppContext): McpServer {
-  const server = new McpServer({ name: 'cook-il-property-intelligence', version: '0.1.0' });
+  const server = new McpServer({ name: "cook-il-property-intelligence", version: "0.1.0" });
 
   server.registerTool(
-    'getDatasetInfo',
+    "getDatasetInfo",
     {
-      description: 'Current dataset snapshot: run id, root/manifest CIDs, record counts, limitations.',
+      description:
+        "Current dataset snapshot: run id, root/manifest CIDs, record counts, limitations.",
       inputSchema: {},
       outputSchema: GetDatasetInfoOutput.shape,
     },
     async () => {
       const { run, source } = await ctx.info();
       return ok(
-        GetDatasetInfoOutput.parse({ ...source, counts: run.counts, limitations: run.limitations, source }),
+        GetDatasetInfoOutput.parse({
+          ...source,
+          counts: run.counts,
+          limitations: run.limitations,
+          source,
+        }),
       );
     },
   );
   server.registerTool(
-    'getSchema',
+    "getSchema",
     {
       description:
-        'Tables and columns of the query dataset (property, permit, contractor, business, sale, run, source_watermark).',
+        "Tables and columns of the query dataset (property, permit, contractor, business, sale, run, source_watermark).",
       inputSchema: {},
       outputSchema: GetSchemaOutput.shape,
     },
     async () =>
-      ok(GetSchemaOutput.parse({ tables: await tableSchema(ctx.ds), source: (await ctx.info()).source })),
+      ok(
+        GetSchemaOutput.parse({
+          tables: await tableSchema(ctx.ds),
+          source: (await ctx.info()).source,
+        }),
+      ),
   );
   server.registerTool(
-    'queryDataset',
+    "queryDataset",
     {
       description:
-        'Run ONE read-only SELECT/WITH statement (DuckDB SQL). LIMIT is capped at 1000, 10 s timeout.',
+        "Run ONE read-only SELECT/WITH statement (DuckDB SQL). LIMIT is capped at 1000, 10 s timeout.",
       inputSchema: QueryDatasetInput.shape,
       outputSchema: QueryDatasetOutput.shape,
     },
@@ -79,10 +93,10 @@ export function createMcpServer(ctx: AppContext): McpServer {
     },
   );
   server.registerTool(
-    'findProperties',
+    "findProperties",
     {
       description:
-        'Properties within radiusMiles of lat/lon (geohash prefilter + haversine) with their permits and contractor/BBB data. Filters: minRoofAge, openRoofingPermitsOnly, minOpenDays.',
+        "Properties within radiusMiles of lat/lon (geohash prefilter + haversine) with their permits and contractor/BBB data. Filters: minRoofAge, openRoofingPermitsOnly, minOpenDays.",
       inputSchema: FindPropertiesInput.shape,
       outputSchema: FindPropertiesOutput.shape,
     },
@@ -95,9 +109,9 @@ export function createMcpServer(ctx: AppContext): McpServer {
       ),
   );
   server.registerTool(
-    'getProperty',
+    "getProperty",
     {
-      description: 'One property by 14-digit PIN with its permits and contractor/BBB data.',
+      description: "One property by 14-digit PIN with its permits and contractor/BBB data.",
       inputSchema: GetPropertyInput.shape,
       outputSchema: GetPropertyOutput.shape,
     },
@@ -116,7 +130,6 @@ export function createMcpServer(ctx: AppContext): McpServer {
 export async function handleMcpRequest(ctx: AppContext, req: Request): Promise<Response> {
   const server = createMcpServer(ctx);
   const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
     enableJsonResponse: true,
   });
   await server.connect(transport);

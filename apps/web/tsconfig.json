@@ -1,23 +1,21 @@
 {
+  // Whole-package type-check project (server, UI, tests, e2e, configs). Emit uses tsconfig.build.json.
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "lib": ["ES2022"],
-    "types": ["node"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": false,
+    "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
-    "esModuleInterop": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "declaration": false,
-    "sourceMap": true,
-    "rootDir": "../..",
-    "outDir": "dist/server"
+    "noEmit": true
   },
-  "include": ["src/**/*.ts", "../../fixtures/**/*.ts"],
-  "exclude": ["src/ui/**", "**/*.test.ts", "node_modules", "dist"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "e2e/**/*.ts", "../../fixtures/**/*.ts", "*.ts"]
 }

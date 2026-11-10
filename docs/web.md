@@ -7,15 +7,21 @@ published Cook County query dataset. It reads the dataset read-only and never to
 
 ```bash
 pnpm install
-pnpm --filter @cook-il/web build            # tsc (server) + vite (UI) -> apps/web/dist
-pnpm --filter @cook-il/web start            # http://localhost:8080
+pnpm --filter @cook/web build            # tsc (server) + vite (UI) -> apps/web/dist
+pnpm --filter @cook/web start            # http://localhost:8080
 # dev: API with reload + Vite dev server (proxies /trpc, /mcp, /health to 8080)
-pnpm --filter @cook-il/web dev
-pnpm --filter @cook-il/web dev:ui           # http://localhost:5173
+pnpm --filter @cook/web dev
+pnpm --filter @cook/web dev:ui           # http://localhost:5173
 ```
 
-Environment (see `.env.example`): `PORT` (8080), `DATASET_DB` (`data/cook_il.duckdb`), `DATASET_DIR` (`data/dataset`),
-`PUBLICATIONS_DIR` (`publications`), `OPENAI_API_KEY` (agent; disabled without it), `MCP_HTTP_AUTH_TOKEN` (MCP; 503 without it).
+Environment (see `.env.example`): `PORT` (8080), `DATA_DIR` (`data`, shared with the pipeline), optional overrides
+`DATASET_DB` (`<DATA_DIR>/cook_il.duckdb`), `DATASET_DIR` (`<DATA_DIR>/dataset`), `PUBLICATIONS_DIR`
+(`<DATA_DIR>/publications`), `OPENAI_API_KEY` (agent; disabled without it), `MCP_HTTP_AUTH_TOKEN` (MCP; 503 without
+it), `GIT_COMMIT` (for `/build.json`). Built entry point: `node apps/web/dist/server/apps/web/src/main.js`
+(`pnpm --filter @cook/web start`); the Docker `CMD` should point there.
+
+Table contract: `apps/web/src/contract.ts` mirrors `packages/shared/src/schemas.ts` (property, permit, contractor,
+business, sale, run with `SourceCount` / `Delta` / `DeadLetter`); switch the import to `@cook/shared` at merge.
 
 Dataset resolution at startup:
 
@@ -25,10 +31,10 @@ Dataset resolution at startup:
 3. If neither exists, a deterministic **fixture** dataset is generated (`fixtures/make-fixture.ts`: 5,000 properties
    around Chicago / Evanston / Oak Park, 2,000 permits of which 600 roofing and 150 open for more than three years,
    300 contractors, 500 businesses, 4,221 sales, 3 runs with placeholder CIDs). The run limitations start with
-   `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook-il/web fixture [db] [publications dir]` regenerates it.
+   `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook/web fixture [db] [publications dir]` regenerates it.
 
-Publications are read from `PUBLICATIONS_DIR/<run_id>/manifest.json` and `verification.json`, falling back to
-`<dirname(DATASET_DB)>/publications/<run_id>/` (where the fixture writes). Expected manifest shape: `run_id`,
+Publications are read from `PUBLICATIONS_DIR/<run_id>/manifest.json` and `verification.json` (default
+`<DATA_DIR>/publications/<run_id>/`, where the fixture also writes). Expected manifest shape: `run_id`,
 `root_cid`, `manifest_cid`, `tables_cid?`, `previous_root_cid?`, `ipns?: {name, resolved_cid}`, `car?: {name, cid, size}`,
 `artifacts: [{cid, name, size, codec: file|directory, sha256, origins?}]`. Verification:
 `results: [{cid, name?, gateway, url?, status, size_match, digest_match, fetched_at, error?}]`.
@@ -102,10 +108,10 @@ pin14 / permit ids with `source_url`, explicit assumptions and a list of missing
 ## Tests
 
 ```bash
-pnpm --filter @cook-il/web lint        # eslint + prettier
-pnpm --filter @cook-il/web typecheck   # server + UI tsconfig
-pnpm --filter @cook-il/web test        # vitest: 31 tests (search math, SQL guard, MCP contracts over HTTP, manifest rendering, agent with mocked model)
-pnpm --filter @cook-il/web test:e2e    # playwright: builds, generates the fixture, starts the server on 8089, 11 smoke tests (every page, MCP endpoint, 390/768/1440)
+pnpm --filter @cook/web lint        # eslint + prettier
+pnpm --filter @cook/web typecheck   # server + UI tsconfig
+pnpm --filter @cook/web test        # vitest: 31 tests (search math, SQL guard, MCP contracts over HTTP, manifest rendering, agent with mocked model)
+pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture, starts the server on 8089, 11 smoke tests (every page, MCP endpoint, 390/768/1440)
 ```
 
 ## Limitations

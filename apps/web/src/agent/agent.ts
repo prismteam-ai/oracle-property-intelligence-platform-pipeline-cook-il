@@ -1,6 +1,6 @@
-import { generateText } from 'ai';
-import type { AppContext } from '../context.js';
-import { agentTools } from './tools.js';
+import { generateText } from "ai";
+import type { AppContext } from "../context.js";
+import { agentTools } from "./tools.js";
 
 export const SYSTEM_PROMPT = `You are the Cook County, IL property-intelligence agent for a roofing CRM. You answer ONLY from the dataset tools.
 Rules:
@@ -22,10 +22,10 @@ export async function askAgent(ctx: AppContext, question: string): Promise<Agent
   const info = await ctx.info();
   if (!ctx.model) {
     return {
-      answer: 'Agent disabled: OPENAI_API_KEY is not configured on this server.',
+      answer: "Agent disabled: OPENAI_API_KEY is not configured on this server.",
       steps: [],
       source: info.source,
-      model: 'none',
+      model: "none",
     };
   }
   const result = await generateText({
@@ -36,6 +36,8 @@ export async function askAgent(ctx: AppContext, question: string): Promise<Agent
     maxSteps: 8,
     temperature: 0,
   });
-  const steps = result.steps.flatMap((s) => s.toolCalls.map((c) => ({ tool: c.toolName, args: c.args })));
+  const steps = result.steps.flatMap((s) =>
+    s.toolCalls.map((c) => ({ tool: c.toolName, args: c.args })),
+  );
   return { answer: result.text, steps, source: info.source, model: ctx.model.modelId };
 }

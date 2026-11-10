@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-import { Card, ExtLink, FixtureBanner, Kv, Status, Table } from '../components.js';
-import { fmt, trpc, useAsync } from '../trpc.js';
+import { Link } from "react-router-dom";
+import { Card, ExtLink, FixtureBanner, Kv, Status, Table } from "../components.js";
+import { fmt, trpc, useAsync } from "../trpc.js";
 
 export function RunSummary() {
-  const q = useAsync(() => trpc.runs.latest.query(), 'latest');
+  const q = useAsync(() => trpc.runs.latest.query(), "latest");
   if (!q.data) return <Status loading={q.loading} error={q.error} />;
   const { run, previous, table_counts, coverage, source, dataset_origin, run_count } = q.data;
   const deltaRows = Object.entries(run.deltas).map(([table, d]) => ({
@@ -24,7 +24,7 @@ export function RunSummary() {
           testId="card-run"
         />
         <Card label="Started" value={run.started_at} testId="card-started" />
-        <Card label="Finished" value={run.finished_at ?? 'running'} testId="card-finished" />
+        <Card label="Finished" value={run.finished_at ?? "running"} testId="card-finished" />
         <Card
           label="Properties"
           value={fmt(table_counts.property)}
@@ -52,18 +52,21 @@ export function RunSummary() {
       <Kv
         testId="provenance"
         items={[
-          ['run_id', run.run_id],
-          ['previous_run_id', run.previous_run_id ?? '—'],
-          ['root CID', run.root_cid ?? '—'],
-          ['manifest CID', run.manifest_cid ?? '—'],
-          ['synced at', source.syncedAt],
+          ["run_id", run.run_id],
+          ["previous_run_id", run.previous_run_id ?? "—"],
+          ["root CID", run.root_cid ?? "—"],
+          ["manifest CID", run.manifest_cid ?? "—"],
+          ["synced at", source.syncedAt],
           [
-            'served from',
-            dataset_origin.kind === 'duckdb'
+            "served from",
+            dataset_origin.kind === "duckdb"
               ? `DuckDB file ${dataset_origin.path}`
               : `Parquet views ${dataset_origin.dir}`,
           ],
-          ['publication', <Link to={`/publications/${run.run_id}`}>artifact manifest for {run.run_id}</Link>],
+          [
+            "publication",
+            <Link to={`/publications/${run.run_id}`}>artifact manifest for {run.run_id}</Link>,
+          ],
         ]}
       />
 
@@ -72,11 +75,13 @@ export function RunSummary() {
         testId="sources"
         rows={run.sources}
         columns={[
-          { key: 'source_system' },
-          { key: 'url', render: (r) => <ExtLink href={r.url} /> },
-          { key: 'records', render: (r) => fmt(r.records) },
-          { key: 'fetched_at', render: (r) => fmt(r.fetched_at) },
-          { key: 'note', render: (r) => fmt(r.note), wrap: true },
+          { key: "source_system" },
+          { key: "dataset_id" },
+          { key: "url", render: (r) => <ExtLink href={r.url} /> },
+          { key: "rows_fetched", render: (r) => fmt(r.rows_fetched) },
+          { key: "rows_staged", render: (r) => fmt(r.rows_staged) },
+          { key: "watermark_value", render: (r) => fmt(r.watermark_value) },
+          { key: "fetched_at", render: (r) => fmt(r.fetched_at) },
         ]}
       />
 
@@ -90,13 +95,18 @@ export function RunSummary() {
           sub={`of ${fmt(coverage.properties_total)}`}
         />
         <Card label="Roofs older than 15 y" value={fmt(coverage.roof_over_15y)} />
-        <Card label="Long-open roofing permits (>3 y)" value={fmt(coverage.long_open_roofing_permits)} />
+        <Card
+          label="Long-open roofing permits (>3 y)"
+          value={fmt(coverage.long_open_roofing_permits)}
+        />
         <Card label="No ownership change > 10 y" value={fmt(coverage.no_sale_over_10y)} />
         <Card label="Out-of-area owners" value={fmt(coverage.out_of_area_owners)} />
         <Card
           label="Bounding box"
           value={
-            coverage.bbox ? `${coverage.bbox.min_lat.toFixed(3)}…${coverage.bbox.max_lat.toFixed(3)}` : '—'
+            coverage.bbox
+              ? `${coverage.bbox.min_lat.toFixed(3)}…${coverage.bbox.max_lat.toFixed(3)}`
+              : "—"
           }
           sub={
             coverage.bbox
@@ -108,27 +118,27 @@ export function RunSummary() {
       <h3>Top municipalities</h3>
       <Table
         rows={coverage.top_municipalities}
-        columns={[{ key: 'municipality' }, { key: 'properties' }]}
+        columns={[{ key: "municipality" }, { key: "properties" }]}
         testId="top-municipalities"
       />
 
-      <h2>Record counts and deltas vs previous run {previous ? `(${previous.run_id})` : ''}</h2>
+      <h2>Record counts and deltas vs previous run {previous ? `(${previous.run_id})` : ""}</h2>
       <Table
         testId="deltas"
         rows={deltaRows}
         columns={[
-          { key: 'table' },
-          { key: 'current', label: 'count (this run)' },
-          { key: 'previous', label: 'count (previous run)' },
-          { key: 'added', render: (r) => fmt(r.added) },
-          { key: 'changed', render: (r) => fmt(r.changed) },
-          { key: 'removed', render: (r) => fmt(r.removed) },
+          { key: "table" },
+          { key: "current", label: "count (this run)" },
+          { key: "previous", label: "count (previous run)" },
+          { key: "inserted", render: (r) => fmt(r.inserted) },
+          { key: "updated", render: (r) => fmt(r.updated) },
+          { key: "unchanged", render: (r) => fmt(r.unchanged) },
         ]}
       />
       <h3>Live row counts in the served snapshot</h3>
       <Table
         rows={Object.entries(table_counts).map(([table, rows]) => ({ table, rows }))}
-        columns={[{ key: 'table' }, { key: 'rows' }]}
+        columns={[{ key: "table" }, { key: "rows" }]}
         testId="table-counts"
       />
 
@@ -136,8 +146,14 @@ export function RunSummary() {
       <Table
         testId="dead-letters"
         empty="No dead letters in this run."
-        rows={run.dead_letters.map((d) => ({ json: JSON.stringify(d) }))}
-        columns={[{ key: 'json', label: 'record', wrap: true }]}
+        rows={run.dead_letters}
+        columns={[
+          { key: "source_system" },
+          { key: "stage" },
+          { key: "key", render: (d) => fmt(d.key) },
+          { key: "error", wrap: true },
+          { key: "at" },
+        ]}
       />
 
       <h2>Limitations</h2>

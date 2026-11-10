@@ -1,12 +1,12 @@
-import { useState } from 'react';
-import { Table } from '../components.js';
-import { SAMPLE_QUERIES } from '../samples.js';
-import { fmt, trpc } from '../trpc.js';
+import { useState } from "react";
+import { Table } from "../components.js";
+import { SAMPLE_QUERIES } from "../samples.js";
+import { fmt, trpc } from "../trpc.js";
 
 type Result = Awaited<ReturnType<typeof trpc.query.sql.mutate>>;
 
 export function Query() {
-  const [sql, setSql] = useState(SAMPLE_QUERIES[1]?.sql ?? '');
+  const [sql, setSql] = useState(SAMPLE_QUERIES[1]?.sql ?? "");
   const [limit, setLimit] = useState(100);
   const [res, setRes] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +39,12 @@ export function Query() {
           </button>
         ))}
       </div>
-      <textarea value={sql} onChange={(e) => setSql(e.target.value)} data-testid="sql" spellCheck={false} />
+      <textarea
+        value={sql}
+        onChange={(e) => setSql(e.target.value)}
+        data-testid="sql"
+        spellCheck={false}
+      />
       <div className="row" style={{ marginTop: 8 }}>
         <label className="f">
           limit
@@ -53,7 +58,7 @@ export function Query() {
           />
         </label>
         <button className="primary" onClick={run} disabled={busy} data-testid="run-sql">
-          {busy ? 'Running…' : 'Run query'}
+          {busy ? "Running…" : "Run query"}
         </button>
       </div>
       {error && (
@@ -64,13 +69,16 @@ export function Query() {
       {res && (
         <>
           <p data-testid="sql-meta">
-            {res.rowCount} rows{res.truncated ? ' (truncated at limit)' : ''} · {res.ms} ms · run{' '}
-            {res.source.runId} · root CID {res.source.rootCid ?? '—'}
+            {res.rowCount} rows{res.truncated ? " (truncated at limit)" : ""} · {res.ms} ms · run{" "}
+            {res.source.runId} · root CID {res.source.rootCid ?? "—"}
           </p>
           <Table
             testId="sql-result"
             rows={res.rows as Record<string, unknown>[]}
-            columns={res.columns.map((c) => ({ key: c, render: (r: Record<string, unknown>) => fmt(r[c]) }))}
+            columns={res.columns.map((c) => ({
+              key: c,
+              render: (r: Record<string, unknown>) => fmt(r[c]),
+            }))}
           />
         </>
       )}
