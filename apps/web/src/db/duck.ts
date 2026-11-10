@@ -10,6 +10,8 @@ export const TABLES = [
   "contractor",
   "business",
   "sale",
+  "property_improvement_has_contractor",
+  "contractor_has_license",
   "run",
   "source_watermark",
 ] as const;

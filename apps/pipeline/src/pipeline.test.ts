@@ -314,7 +314,15 @@ describe("stage + transform (integration)", () => {
 
   it("builds the contract tables with joins, geocoding, roofing and contractor matching", async () => {
     const t = await transform(db, { dataDir, runId: "run1", log, asOf: AS_OF });
-    expect(t.counts).toEqual({ property: 2, permit: 7, contractor: 4, business: 1, sale: 2 });
+    expect(t.counts).toEqual({
+      property: 2,
+      permit: 7,
+      contractor: 4,
+      business: 1,
+      sale: 2,
+      property_improvement_has_contractor: 3,
+      contractor_has_license: 3,
+    });
     expect(t.deltas["property"]).toEqual({ inserted: 2, updated: 0, unchanged: 0 });
 
     const p1 = (await db.one(`select * from property where pin14 = '${P1}'`))!;
@@ -378,12 +386,39 @@ describe("stage + transform (integration)", () => {
     expect(ids.some((i) => i.startsWith("idfpr:row:"))).toBe(true);
     expect(await db.scalar("select bbb_state from contractor limit 1")).toBe("unknown");
 
+    const edges = await db.query<Record<string, unknown>>(
+      "select * from property_improvement_has_contractor order by permit_id",
+    );
+    expect(
+      edges.map((e) => [
+        e["permit_id"],
+        e["match_tier"],
+        e["match_confidence"],
+        e["matched_name_key"],
+      ]),
+    ).toEqual([
+      ["chicago_permits:100000001", "suffix_stripped", 0.7, "A AND B ROOFING"],
+      ["chicago_permits:100000002", "dba", 0.7, "SUNNY ROOFS"],
+      ["cook_assessor_permits:a1", "exact_normalized", 0.8, "TEAM ROOFING CO"],
+    ]);
+    const lic = await db.query<Record<string, unknown>>(
+      "select * from contractor_has_license order by license_number",
+    );
+    expect(lic.map((l) => l["license_number"])).toEqual(["104000001", "104000002", "104000003"]);
+    expect(lic[0]).toMatchObject({
+      contractor_id: "idfpr:104000001",
+      authority: "IDFPR",
+      license_status: "ACTIVE",
+    });
+
     const dirs = readdirSync(join(dataDir, "dataset", "run1"));
     expect(dirs.sort()).toEqual([
       "business",
       "contractor",
+      "contractor_has_license",
       "permit",
       "property",
+      "property_improvement_has_contractor",
       "sale",
       "source_watermark",
     ]);

@@ -13,7 +13,22 @@ const provenance = {
 
 export const RoofAgeBasis = z.enum(["reroof_permit", "new_construction_permit", "year_built"]);
 export const RoofAgeConfidence = z.enum(["high", "medium", "low"]);
-export const BbbState = z.enum(["confirmed_present", "confirmed_empty", "unavailable", "unknown"]);
+/** `stale` = rating read from an Internet Archive copy because the live profile was not reachable. */
+export const BbbState = z.enum([
+  "confirmed_present",
+  "confirmed_empty",
+  "unavailable",
+  "unknown",
+  "stale",
+]);
+export const BbbSource = z.enum(["live", "archive"]);
+/** Permit -> contractor match tiers (kit confidence). Permits carry no license number or phone, so no higher tier exists. */
+export const MatchTier = z.enum(["exact_normalized", "suffix_stripped", "dba"]);
+export const MATCH_CONFIDENCE: Record<MatchTier, number> = {
+  exact_normalized: 0.8,
+  suffix_stripped: 0.7,
+  dba: 0.7,
+};
 
 export const Property = z.object({
   pin14: z.string().length(14),
@@ -84,7 +99,30 @@ export const Contractor = z.object({
   bbb_url: z.string().nullable(),
   bbb_checked_at: timestamp.nullable(),
   bbb_state: BbbState,
+  bbb_reason: z.string().nullable().default(null),
+  bbb_source: BbbSource.nullable().default(null),
   ...provenance,
+});
+
+/** Edge: permit (property improvement) -> contractor company, with the tier that produced it. */
+export const PropertyImprovementHasContractor = z.object({
+  permit_id: z.string(),
+  contractor_id: z.string(),
+  match_tier: MatchTier,
+  match_confidence: z.number(),
+  matched_name_key: z.string(),
+  run_id: z.string(),
+});
+
+/** Edge: contractor company -> licensing-authority license (one row per contractor with a license number). */
+export const ContractorHasLicense = z.object({
+  contractor_id: z.string(),
+  license_number: z.string(),
+  license_type: z.string(),
+  license_status: z.string().nullable(),
+  authority: z.literal("IDFPR"),
+  source_url: z.string(),
+  run_id: z.string(),
 });
 
 export const Business = z.object({
@@ -168,6 +206,11 @@ export type Permit = z.infer<typeof Permit>;
 export type Contractor = z.infer<typeof Contractor>;
 export type Business = z.infer<typeof Business>;
 export type Sale = z.infer<typeof Sale>;
+export type PropertyImprovementHasContractor = z.infer<typeof PropertyImprovementHasContractor>;
+export type ContractorHasLicense = z.infer<typeof ContractorHasLicense>;
+export type MatchTier = z.infer<typeof MatchTier>;
+export type BbbState = z.infer<typeof BbbState>;
+export type BbbSource = z.infer<typeof BbbSource>;
 export type Run = z.infer<typeof Run>;
 export type SourceCount = z.infer<typeof SourceCount>;
 export type Delta = z.infer<typeof Delta>;
@@ -182,6 +225,8 @@ export const CONTRACT_TABLES = [
   "contractor",
   "business",
   "sale",
+  "property_improvement_has_contractor",
+  "contractor_has_license",
   "run",
   "source_watermark",
 ] as const;

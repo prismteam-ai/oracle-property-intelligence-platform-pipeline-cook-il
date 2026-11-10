@@ -50,10 +50,29 @@ as a volume and read `.env` via `env_file`. The `web` command is a placeholder u
    empty strings become NULL). The source watermark (`max(updated_at)`) is stored in
    `source_watermark`.
 3. **transform** — rebuilds the contract tables from the raw tables deterministically
-   (`sale`, `contractor`, `business`, `property`, `permit`, then roof age and geohash),
+   (`sale`, `contractor`, `business`, `property`, `permit`, then roof age, geohash and the two
+   relationship tables below),
    computes deltas by hash against the previous version of each table, writes Parquet
    (`zstd`, files ≤ 64 MB) and keeps `cook_il.duckdb` current.
 4. **run** = fetch + stage + transform under one `run_id` row in `run`.
+5. **bbb** (`pipeline bbb --limit N --min-permits M`) — separate, rate-limited BBB reputation
+   harvest into the `bbb_lookup` staging table; transform joins it into `contractor`. See `docs/bbb.md`.
+
+## Contractor identity (kit vocabulary)
+
+The IDFPR roofing roster is the only contractor identity. Permit names are search keys, never
+identities: `permit.contractor_id` / `permit.contractor_match_tier` stay as convenience columns, and
+the same match is published as relationship tables:
+
+- `property_improvement_has_contractor(permit_id, contractor_id, match_tier, match_confidence, matched_name_key, run_id)`
+  — one row per permit that resolved to a roster company. `match_confidence` follows the kit tiers:
+  `exact_normalized` 0.80, `suffix_stripped` 0.70, `dba` 0.70. There is no license-number (1.0) or
+  phone (0.95) tier because Cook Assessor and Chicago permits publish neither.
+- `contractor_has_license(contractor_id, license_number, license_type, license_status, authority='IDFPR', source_url, run_id)`
+  — one row per roster company with a license number.
+
+Both are rebuilt every transform, exported to Parquet, counted in `run.counts` and served by the
+web/MCP snapshot.
 
 ## Batches, watermarks, incremental mode
 

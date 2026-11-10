@@ -302,6 +302,8 @@ export async function makeFixture(
           : null,
       bbb_checked_at: bbb_state === "unknown" ? null : ingested,
       bbb_state,
+      bbb_reason: bbb_state === "unavailable" ? "access_boundary_403" : null,
+      bbb_source: bbb_state === "confirmed_present" ? "live" : null,
       source_system: FIXTURE_SOURCE,
       source_record_key: license,
       source_record_hash: hash(name),
@@ -419,7 +421,7 @@ export async function makeFixture(
       applicant_name: contractor ? contractor.name : prop.owner_name,
       contractor_name: contractor ? contractor.name : null,
       contractor_id: contractor ? contractor.contractor_id : null,
-      contractor_match_tier: contractor ? "exact_normalized_name" : null,
+      contractor_match_tier: contractor ? "exact_normalized" : null,
       municipality: prop.municipality,
       source_record_key: permitNo,
       source_record_hash: hash(permitNo + work),
@@ -519,6 +521,8 @@ export async function makeFixture(
     contractor: contractors.length,
     business: businesses.length,
     sale: sales.length,
+    property_improvement_has_contractor: permits.filter((p) => p.contractor_id).length,
+    contractor_has_license: contractors.length,
   };
   const src = (
     source_system: string,
@@ -698,7 +702,34 @@ export async function makeFixture(
   await load(
     "contractor",
     contractors,
-    `contractor_id: 'VARCHAR', name: 'VARCHAR', name_normalized: 'VARCHAR', license_number: 'VARCHAR', license_type: 'VARCHAR', license_status: 'VARCHAR', city: 'VARCHAR', state: 'VARCHAR', county: 'VARCHAR', ever_disciplined: 'BOOLEAN', bbb_rating: 'VARCHAR', bbb_url: 'VARCHAR', bbb_checked_at: 'TIMESTAMP', bbb_state: 'VARCHAR', ${prov}`,
+    `contractor_id: 'VARCHAR', name: 'VARCHAR', name_normalized: 'VARCHAR', license_number: 'VARCHAR', license_type: 'VARCHAR', license_status: 'VARCHAR', city: 'VARCHAR', state: 'VARCHAR', county: 'VARCHAR', ever_disciplined: 'BOOLEAN', bbb_rating: 'VARCHAR', bbb_url: 'VARCHAR', bbb_checked_at: 'TIMESTAMP', bbb_state: 'VARCHAR', bbb_reason: 'VARCHAR', bbb_source: 'VARCHAR', ${prov}`,
+  );
+  await load(
+    "property_improvement_has_contractor",
+    permits
+      .filter((p) => p.contractor_id)
+      .map((p) => ({
+        permit_id: p.permit_id,
+        contractor_id: p.contractor_id,
+        match_tier: "exact_normalized",
+        match_confidence: 0.8,
+        matched_name_key: p.contractor_name,
+        run_id: runId,
+      })),
+    `permit_id: 'VARCHAR', contractor_id: 'VARCHAR', match_tier: 'VARCHAR', match_confidence: 'DOUBLE', matched_name_key: 'VARCHAR', run_id: 'VARCHAR'`,
+  );
+  await load(
+    "contractor_has_license",
+    contractors.map((c) => ({
+      contractor_id: c.contractor_id,
+      license_number: c.license_number,
+      license_type: c.license_type,
+      license_status: c.license_status,
+      authority: "IDFPR",
+      source_url: c.source_url,
+      run_id: runId,
+    })),
+    `contractor_id: 'VARCHAR', license_number: 'VARCHAR', license_type: 'VARCHAR', license_status: 'VARCHAR', authority: 'VARCHAR', source_url: 'VARCHAR', run_id: 'VARCHAR'`,
   );
   await load(
     "business",

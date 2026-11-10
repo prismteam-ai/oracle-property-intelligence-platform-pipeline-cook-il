@@ -30,7 +30,8 @@ export function Query() {
       <h1>Read-only SQL console (DuckDB)</h1>
       <p className="muted">
         One SELECT/WITH statement; LIMIT is capped at 1000; 10 s timeout. Tables: property, permit,
-        contractor, business, sale, run, source_watermark.
+        contractor, business, sale, property_improvement_has_contractor, contractor_has_license,
+        run, source_watermark.
       </p>
       <div className="samples">
         {SAMPLE_QUERIES.map((s) => (

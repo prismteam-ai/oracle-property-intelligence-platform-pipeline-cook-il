@@ -4,6 +4,7 @@ import { quoteString, type Duck } from "@cook/duck";
 import {
   CLOSED_STATUSES,
   CONTRACT_TABLES,
+  MATCH_CONFIDENCE,
   ROOFING_EXCLUDE,
   ROOFING_INCLUDE,
   ROOFING_RULE,
@@ -24,6 +25,16 @@ const PK: Record<string, string> = {
   sale: "sale_id",
 };
 const inList = (xs: readonly string[]) => xs.map(q).join(", ");
+const EDGE_TABLES = ["property_improvement_has_contractor", "contractor_has_license"] as const;
+const PARQUET_TABLES = [
+  "property",
+  "permit",
+  "contractor",
+  "business",
+  "sale",
+  ...EDGE_TABLES,
+  "source_watermark",
+];
 
 export const LIMITATIONS = [
   "Cook County Clerk recordings (deeds, mortgages, liens) have no bulk/API export; ownership comes from Assessor mailing-name and sales data instead.",
@@ -31,7 +42,8 @@ export const LIMITATIONS = [
   "Chicago trade/contractor licenses are published as HTML search only; contractor identity is resolved against the IDFPR roofing roster (statewide).",
   "Suburban municipal permit portals (130+ jurisdictions) are not bulk-available; suburban permits come from the Assessor permit feed which lacks close dates (closed_at is null; CLOSED status is the terminal signal).",
   "Chicago building permits have no close date; status COMPLETE/EXPIRED/CANCELLED/REVOKED is terminal; 303k pre-2006 permits have no status and are never reported as open.",
-  "BBB ratings are not harvested yet (bbb_state='unknown' for every contractor).",
+  "Permit -> contractor identity is a tiered name match against the IDFPR roofing roster (exact 0.80, suffix-stripped / DBA 0.70): Cook and Chicago permits carry no license number or phone, so no higher-confidence tier exists; unmatched permits have no edge.",
+  "BBB ratings: bbb.org answers every request from this host with HTTP 403 (Cloudflare challenge, including robots.txt), so live profiles are not read; ratings come from Internet Archive copies (bbb_state='stale', bbb_source='archive') via `pipeline bbb` and only for contractors whose archived profile slug matches the licensed name. Everything else is 'unavailable' (bbb_reason says why) or 'unknown' (not attempted).",
   "Property coordinates are parcel centroids from the Assessor Parcel Universe; permits without lat/lon are geocoded by PIN to the parcel centroid.",
 ];
 
@@ -54,12 +66,13 @@ export async function transform(
   };
   await snapshotPrevious(db);
   await step("sale", saleSql(runId));
-  await step("contractor", contractorSql(runId));
+  await step("contractor", contractorSql(runId, await db.tableExists("bbb_lookup")));
   await step("business", businessSql(runId));
   await step("property_base", propertyBaseSql(runId, asOf));
   await step("contractor_name_index", contractorIndexSql());
   for (const [i, sql] of permitSql(runId, asOf).entries()) await step(`permit_${i}`, sql);
   await step("roof_age", roofAgeSql(asOf));
+  for (const [i, sql] of edgeSql(runId).entries()) await step(`edges_${i}`, sql);
   await fillGeohash(db, o.log);
   await step(
     "property_hash",
@@ -72,6 +85,7 @@ export async function transform(
     deltas[t] = await reconcile(db, t, PK[t]!);
     counts[t] = await db.count(t);
   }
+  for (const t of EDGE_TABLES) counts[t] = await db.count(t);
   await db.exec("drop table if exists contractor_name_index");
   const parquetDir = await exportParquet(db, o.dataDir, runId, o.log);
   return { counts, deltas, parquet_dir: parquetDir };
@@ -131,18 +145,23 @@ function saleSql(runId: string): string {
     from raw_cook_sales where length(regexp_replace(pin, '[^0-9]', '', 'g')) = 14`;
 }
 
-function contractorSql(runId: string): string {
+/** BBB columns come from the `bbb_lookup` staging table (written by `pipeline bbb`) so a rebuild never loses a harvest. */
+function contractorSql(runId: string, hasBbb: boolean): string {
   const s = findSource("idfpr_roofing");
+  const bbb = hasBbb
+    ? `b.bbb_rating, b.bbb_url, b.bbb_checked_at, coalesce(b.bbb_state, 'unknown') as bbb_state, b.bbb_reason, b.bbb_source`
+    : `null::varchar as bbb_rating, null::varchar as bbb_url, null::timestamp as bbb_checked_at, 'unknown' as bbb_state, null::varchar as bbb_reason, null::varchar as bbb_source`;
   return `create or replace table contractor as
     select 'idfpr:' || coalesce(license_number, 'row:' || source_record_key) as contractor_id,
       coalesce(nullif(trim(business_name), ''), nullif(trim(concat_ws(' ', first_name, last_name)), ''), license_number) as name,
       ${SQL_NORMALIZE_NAME("coalesce(nullif(trim(business_name), ''), nullif(trim(concat_ws(' ', first_name, last_name)), ''), license_number)")} as name_normalized,
       coalesce(license_number, '') as license_number, license_type, license_status, city, state, county,
       case ever_disciplined when 'Y' then true when 'N' then false else null end as ever_disciplined,
-      null::varchar as bbb_rating, null::varchar as bbb_url, null::timestamp as bbb_checked_at, 'unknown' as bbb_state,
+      ${bbb},
       nullif(trim(businessdba), '') as dba, ${usDate("expiration_date")} as expires_at,
       ${prov(s.system, sourceUrl(s), runId)}
-    from raw_idfpr_roofing`;
+    from raw_idfpr_roofing r
+    ${hasBbb ? "left join bbb_lookup b on b.contractor_id = 'idfpr:' || coalesce(r.license_number, 'row:' || r.source_record_key)" : ""}`;
 }
 
 /** name_key -> contractor_id per tier; one winner per key (ACTIVE first, latest expiry, lowest id). */
@@ -261,6 +280,7 @@ function permitSql(runId: string, asOf: string): string[] {
       b.applicant_name, b.contractor_name,
       coalesce(i1.contractor_id, i2.contractor_id, i3.contractor_id) as contractor_id,
       case when i1.contractor_id is not null then 'exact_normalized' when i2.contractor_id is not null then 'suffix_stripped' when i3.contractor_id is not null then 'dba' end as contractor_match_tier,
+      case when i1.contractor_id is not null then b.name_key1 when i2.contractor_id is not null then b.name_key2 when i3.contractor_id is not null then b.name_key1 end as contractor_match_key,
       b.municipality, b.is_new_construction,
       b.source_system as source_system, b.source_record_key, b.source_record_hash, b.src_url || '?' || b.source_record_key as source_url,
       now()::timestamp as ingested_at, ${q(runId)} as run_id
@@ -273,6 +293,24 @@ function permitSql(runId: string, asOf: string): string[] {
     `drop table permit_base`,
     `drop table prop_geo`,
     `drop table prop_geo10`,
+  ];
+}
+
+/** Relationship tables (kit vocabulary): permit -> company edge with its tier confidence; company -> IDFPR license. */
+function edgeSql(runId: string): string[] {
+  const conf = Object.entries(MATCH_CONFIDENCE)
+    .map(([tier, c]) => `when ${q(tier)} then ${c}`)
+    .join(" ");
+  return [
+    `create or replace table property_improvement_has_contractor as
+      select permit_id, contractor_id, contractor_match_tier as match_tier,
+        (case contractor_match_tier ${conf} end)::double as match_confidence,
+        contractor_match_key as matched_name_key, ${q(runId)} as run_id
+      from permit where contractor_id is not null`,
+    `create or replace table contractor_has_license as
+      select contractor_id, license_number, license_type, license_status, 'IDFPR' as authority, source_url, ${q(runId)} as run_id
+      from contractor where license_number <> ''`,
+    `alter table permit drop column contractor_match_key`,
   ];
 }
 
@@ -332,7 +370,7 @@ async function exportParquet(
   const dir = join(dataDir, "dataset", runId);
   mkdirSync(dir, { recursive: true });
   const t0 = Date.now();
-  for (const t of ["property", "permit", "contractor", "business", "sale", "source_watermark"]) {
+  for (const t of PARQUET_TABLES) {
     await db.exec(`copy (select * from ${t}) to ${q(join(dir, t))}
       (format parquet, compression zstd, file_size_bytes '64MB', overwrite_or_ignore true)`);
   }

@@ -58,7 +58,7 @@ export function createMcpServer(ctx: AppContext): McpServer {
     "getSchema",
     {
       description:
-        "Tables and columns of the query dataset (property, permit, contractor, business, sale, run, source_watermark).",
+        "Tables and columns of the query dataset (property, permit, contractor, business, sale, property_improvement_has_contractor, contractor_has_license, run, source_watermark).",
       inputSchema: {},
       outputSchema: GetSchemaOutput.shape,
     },
