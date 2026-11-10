@@ -10,3 +10,5 @@ data/
 dist/
 .turbo/
 coverage/
+
+.playwright-mcp/
