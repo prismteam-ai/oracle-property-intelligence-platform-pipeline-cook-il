@@ -1,12 +1,19 @@
 import { Link } from "react-router-dom";
 import { Card, ExtLink, FixtureBanner, Kv, Status, Table } from "../components.js";
 import { fmt, trpc, useAsync } from "../trpc.js";
+import { gatewayKind } from "./Publications.js";
 
 export function RunSummary() {
   const q = useAsync(() => trpc.runs.latest.query(), "latest");
+  const pubId = q.data?.source.publishedRunId ?? null;
+  const pub = useAsync(
+    () => (pubId ? trpc.publications.get.query({ run_id: pubId }) : Promise.resolve(null)),
+    `pub:${pubId ?? ""}`,
+  );
   if (!q.data) return <Status loading={q.loading} error={q.error} />;
   const { run, previous, table_counts, coverage, source, sources, dataset_origin, run_count } =
     q.data;
+  const manifest = pub.data?.publication.manifest ?? null;
   const deltaRows = Object.entries(run.deltas).map(([table, d]) => ({
     table,
     ...d,
@@ -47,6 +54,37 @@ export function RunSummary() {
         <Card label="Businesses" value={fmt(table_counts.business)} testId="card-business" />
         <Card label="Sales (ownership)" value={fmt(table_counts.sale)} testId="card-sale" />
         <Card label="Runs in history" value={<Link to="/runs">{fmt(run_count)}</Link>} />
+        <Card
+          label="Publication proof"
+          testId="card-publication"
+          value={
+            pubId ? <Link to={`/publications/${pubId}`}>{pubId}</Link> : "no published run yet"
+          }
+          sub={
+            pubId && (
+              <>
+                <div>root CID {fmt(source.rootCid)}</div>
+                <div>
+                  pins:{" "}
+                  {manifest?.pins.length
+                    ? manifest.pins.map((p) => `${p.provider} ${p.ok ? "ok" : "FAILED"}`).join(", ")
+                    : "none recorded"}
+                </div>
+                {pub.data?.publication.verifications.map(({ file, data: v }) => (
+                  <div key={file}>
+                    {file}:{" "}
+                    {Object.entries(v.summary)
+                      .map(([g, s]) => `${new URL(g).host} ${s.ok}/${s.total} (${gatewayKind(g)})`)
+                      .join(", ")}
+                  </div>
+                ))}
+                {pub.data && !pub.data.publication.verifications.length && (
+                  <div>gateway verification pending</div>
+                )}
+              </>
+            )
+          }
+        />
       </div>
 
       <h2>Provenance of this snapshot</h2>
