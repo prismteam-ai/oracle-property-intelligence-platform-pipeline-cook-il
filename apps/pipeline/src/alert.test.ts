@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import pino from "pino";
 import type { Run } from "@cook/shared";
-import { runNeedsAttention, signalRun } from "./alert.js";
+import { ALERT_TIMEOUT_MS, runNeedsAttention, signalRun } from "./alert.js";
 
 const log = pino({ level: "silent" });
 const base: Run = {
@@ -56,5 +56,31 @@ describe("signalRun", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
     const boom = vi.fn(() => Promise.reject(new Error("ECONNREFUSED")));
     expect(await signalRun(run, { webhookUrl: "http://hook", log, fetchImpl: boom })).toBe(1);
+  });
+  it("bounds webhook requests and never logs credential-bearing transport errors", async () => {
+    const lines: string[] = [];
+    const captured = pino(
+      { level: "error" },
+      {
+        write: (line: string) => {
+          lines.push(line);
+        },
+      },
+    );
+    const webhookUrl = "https://user:private-token@example.test/private-hook";
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValue(new Error(`fetch failed for ${webhookUrl}`));
+    const run = {
+      ...base,
+      status: "failed" as const,
+      dead_letters: [{ ...dead, error: `fetch failed ${webhookUrl}` }],
+    };
+    expect(await signalRun(run, { webhookUrl, log: captured, fetchImpl })).toBe(1);
+    expect(fetchImpl.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(ALERT_TIMEOUT_MS).toBe(5000);
+    expect(lines.join("\n")).not.toContain("private-token");
+    expect(lines.join("\n")).not.toContain("private-hook");
+    expect(lines.join("\n")).toContain("transport-or-timeout");
   });
 });

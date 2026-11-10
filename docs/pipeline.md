@@ -145,3 +145,9 @@ See `docs/sources.md` and the `limitations` column of every run row: no permit c
 Chicago pre-2006 permits without status, suburban permit portals not bulk-available, Clerk /
 Treasurer / Chicago trade licenses not loadable, contractor identity is a name match (no license/phone on
 permits), BBB reachable only through Internet Archive copies (`docs/bbb.md`).
+
+### CLI failure signalling
+
+The `run` and `transform` CLI paths emit a structured `run-needs-attention` event and exit 1 when a run failed or contains any dead letters, including an otherwise `ok` run. The signal is emitted before retention, and a failure while recording metadata never replaces the original ingestion error. Clean runs exit 0.
+
+If `ALERT_WEBHOOK_URL` is configured in the gitignored deployment environment, the CLI also POSTs the run summary with a five-second abort timeout. No webhook is called when unset or for a clean run. A rejected/timed-out webhook cannot suppress the failure exit; transport exception strings and webhook URLs are omitted from logs, and URLs in dead-letter summaries are redacted. No webhook destination is enabled by the repository. The compose loop logs the CLI exit code and continues its six-hour cadence rather than silently treating failed/dead-letter runs as success.

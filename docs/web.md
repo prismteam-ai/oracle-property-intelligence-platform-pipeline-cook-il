@@ -159,12 +159,7 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
 
 ## Limitations
 
-<!-- TODO(alerting): wire `signalRun` (apps/pipeline/src/alert.ts) into the `run` command in apps/pipeline/src/cli.ts: `process.exitCode = await signalRun(run, { webhookUrl: process.env.ALERT_WEBHOOK_URL, log: runLog })` after runAll, and in the catch path for failed runs; document ALERT_WEBHOOK_URL in docs/pipeline.md. -->
-
-- Failure signalling: `apps/pipeline/src/alert.ts` (`signalRun`) returns exit code 1 for a run that ended `failed`
-  or produced dead letters and POSTs `{run_id, status, counts, dead_letters, errors}` to `ALERT_WEBHOOK_URL`
-  (`.env.example`) when set. Not yet called from the `run` command (see the TODO above); until then only a thrown
-  transform error exits non-zero and a run with dead letters exits 0.
+- Failure signalling is wired into the `run` and `transform` CLI completion/error paths. A failed run or any dead letters emits `run-needs-attention` and exits 1 before retention. `ALERT_WEBHOOK_URL` optionally receives the summary with a five-second timeout; it is unset by default, and this implementation does not prove active external alert delivery. Transport failures cannot mask the run failure and do not log the webhook URL. See `docs/pipeline.md` for configuration and the offline built-CLI regression.
 
 - Date sanity is display-side only: roof-age anchors and permit dates before 1900 or after today are rendered as
   "invalid date (source)" on `/explore`, excluded from roof-age filtering/ordering in `search.properties` and from the

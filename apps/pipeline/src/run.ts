@@ -211,7 +211,11 @@ export async function runAll(c: RunContext): Promise<Run> {
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     c.log.error({ error }, "run failed");
-    await finishRun(c, "failed", { fetch, stage, error });
+    try {
+      await finishRun(c, "failed", { fetch, stage, error });
+    } catch {
+      c.log.error({ run_id: c.runId }, "could not persist failed run metadata");
+    }
     throw e;
   }
 }

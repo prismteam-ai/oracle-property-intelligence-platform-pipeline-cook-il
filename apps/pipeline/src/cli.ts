@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from "node:util";
+import { Run as RunSchema } from "@cook/shared";
+import { signalRun } from "./alert.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { config as loadDotenv } from "dotenv";
@@ -213,6 +215,10 @@ async function main(): Promise<void> {
           ...(values["as-of"] ? { asOf: values["as-of"] } : {}),
         });
         const run = await finishRun(ctx, "ok", { transform: t });
+        process.exitCode = await signalRun(run, {
+          webhookUrl: process.env["ALERT_WEBHOOK_URL"],
+          log: runLog,
+        });
         console.log(
           JSON.stringify({
             run_id: run.run_id,
@@ -222,13 +228,21 @@ async function main(): Promise<void> {
           }),
         );
       } catch (e) {
-        await finishRun(ctx, "failed", { error: e instanceof Error ? e.message : String(e) });
+        try {
+          await finishRun(ctx, "failed", { error: e instanceof Error ? e.message : String(e) });
+        } catch {
+          runLog.error({ run_id: runId }, "could not persist failed run metadata");
+        }
         throw e;
       }
     } else if (cmd === "run") {
       runLog.info({ incremental: values.incremental }, "run started");
       const run = await runAll(ctx);
       runLog.info({ status: run.status, counts: run.counts, deltas: run.deltas }, "run finished");
+      process.exitCode = await signalRun(run, {
+        webhookUrl: process.env["ALERT_WEBHOOK_URL"],
+        log: runLog,
+      });
       prune({
         dataDir,
         publicationsDir,
@@ -259,6 +273,35 @@ async function main(): Promise<void> {
       console.log(USAGE);
       process.exitCode = 2;
     }
+  } catch (error) {
+    if (cmd === "run" || cmd === "transform") {
+      process.exitCode = 1;
+      try {
+        const row = await db.one<Record<string, unknown>>(
+          "select run_id, status, counts, dead_letters from run where run_id = ?",
+          [runId],
+        );
+        if (!row) throw new Error("run metadata unavailable", { cause: error });
+        for (const field of ["counts", "dead_letters"])
+          if (typeof row[field] === "string") row[field] = JSON.parse(row[field]);
+        const run = RunSchema.pick({
+          run_id: true,
+          status: true,
+          counts: true,
+          dead_letters: true,
+        }).parse(row);
+        await signalRun(
+          { ...run, status: "failed" },
+          { webhookUrl: process.env["ALERT_WEBHOOK_URL"], log: runLog },
+        );
+      } catch {
+        runLog.error(
+          { event: "run-needs-attention", run_id: runId, status: "failed" },
+          "run needs attention; stored summary unavailable",
+        );
+      }
+    }
+    throw error;
   } finally {
     if (cmd !== "serve") db.close();
   }
