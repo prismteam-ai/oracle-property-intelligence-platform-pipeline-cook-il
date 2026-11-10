@@ -4,3 +4,5 @@ data
 pnpm-lock.yaml
 .turbo
 README.md
+playwright-report
+test-results

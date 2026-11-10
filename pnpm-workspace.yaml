@@ -3,3 +3,6 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - "@trpc/client@11.28.0"
+  - "@trpc/server@11.28.0"

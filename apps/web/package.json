@@ -1,0 +1,48 @@
+{
+  "name": "@cook/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "dev:ui": "vite",
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "start": "node dist/server/apps/web/src/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "fixture": "tsx ../../fixtures/make-fixture.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "1.3.24",
+    "@cook/shared": "workspace:*",
+    "@duckdb/node-api": "1.4.5-r.1",
+    "@hono/node-server": "2.1.6",
+    "@hono/trpc-server": "0.4.2",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "@trpc/client": "11.28.0",
+    "@trpc/server": "11.28.0",
+    "ai": "4.3.19",
+    "hono": "4.13.17",
+    "maplibre-gl": "5.24.0",
+    "ngeohash": "0.6.4",
+    "pino": "9.14.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-router-dom": "7.18.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cook/tsconfig": "workspace:*",
+    "@playwright/test": "1.59.1",
+    "@types/ngeohash": "0.6.8",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "7.3.8",
+    "vitest": "3.2.7"
+  }
+}

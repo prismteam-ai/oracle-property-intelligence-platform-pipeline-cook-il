@@ -2,11 +2,11 @@ services:
   web:
     build: { context: ., args: { GIT_COMMIT: "${GIT_COMMIT:-unknown}" } }
     image: oracle-cook-il:local
-    # placeholder until apps/web lands: serves /health and /build.json from the pipeline CLI
-    command: ["node", "apps/pipeline/dist/cli.js", "serve"]
+    command: ["node", "apps/web/dist/server/apps/web/src/main.js"]
     ports: ["8080:8080"]
     env_file: .env
     environment: { DATA_DIR: /app/data, PORT: "8080" }
+    # bind mount: on the VM `chown -R 1000:1000 ./data` once (the image runs as user `node`, uid 1000)
     volumes: ["./data:/app/data"]
     restart: unless-stopped
     healthcheck:
