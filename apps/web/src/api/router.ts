@@ -6,7 +6,7 @@ import { FindPropertiesInput, GetPropertyInput, QueryDatasetInput } from "../mcp
 import { findProperties, getProperty, tableSchema } from "../search/properties.js";
 import { coverage, getRun, listRuns, tableCounts } from "../runs.js";
 import { gatewayUrls, getPublication } from "../publications.js";
-import { askAgent } from "../agent/agent.js";
+import { AskInput, askAgent } from "../agent/agent.js";
 
 const t = initTRPC.context<AppContext>().create();
 const p = t.procedure;
@@ -100,8 +100,8 @@ export const appRouter = t.router({
   }),
   agent: t.router({
     ask: p
-      .input(z.object({ question: z.string().min(1).max(2000) }))
-      .mutation(({ ctx, input }) => askAgent(ctx, input.question)),
+      .input(AskInput)
+      .mutation(({ ctx, input }) => askAgent(ctx, input.question, input.messages)),
   }),
 });
 export type AppRouter = typeof appRouter;

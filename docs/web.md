@@ -109,7 +109,14 @@ npx @modelcontextprotocol/inspector --transport http --server-url http://localho
 Vercel AI SDK `generateText` tool loop (`maxSteps: 8`) on `@ai-sdk/openai` `gpt-4.1-mini`. Tools: `geocode_place`
 (Nominatim with User-Agent, in-memory cache, built-in fallback for Chicago / Evanston / Oak Park / Skokie / Cicero),
 `find_properties`, `open_roofing_permits`, `run_sql_readonly` (same SQL guard, 200 rows). The system prompt requires
-pin14 / permit ids with `source_url`, explicit assumptions and a list of missing data (e.g. BBB unavailable). Example prompts:
+pin14 / permit ids with `source_url`, explicit assumptions and a list of missing data (e.g. BBB unavailable).
+
+Conversation memory: the UI keeps the chat in `sessionStorage` (per browser tab/session) and sends the prior turns as
+`messages`; the server returns `center` (last geocoded place or radius-tool centre) and `turn` (answer + a
+`(context: search centre lat …, lon …)` line) which the client stores as the assistant turn, so "near that area"
+resolves to the last search centre without geocoding again. Defaults fixed in the system prompt: "many years" =
+open for at least 3 years (`minOpenDays=1095`, stated as an assumption); every open permit lists the contractor's BBB
+rating or `BBB: not available (bbb_state=...)`. Example prompts:
 
 - "Which properties in Cook County within five miles of Evanston have roofs older than 15 years?"
 - "Which properties near that area have open roofing permits that have been open for many years, and who is the listed contractor?"
