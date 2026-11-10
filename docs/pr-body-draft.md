@@ -1,8 +1,8 @@
 # Cook County, IL — Oracle property intelligence pipeline (DuckDB + IPFS + MCP + agent)
 
 **Live runtime:** https://cook-il.108-142-177-43.nip.io (public, no credentials)
-**Demo video:** <RELEASE_VIDEO_URL>
-**Companion PR (Roofing CRM):** <CRM_PR_URL>
+**Demo video:** Pending final checks; no video recorded yet.
+**Companion PR (Roofing CRM):** Pending creation of the companion draft.
 
 ## Runtime and access
 
