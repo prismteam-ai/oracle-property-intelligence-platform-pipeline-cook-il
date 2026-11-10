@@ -1,0 +1,22 @@
+{
+  "name": "cook-il-root-temp",
+  "private": true,
+  "description": "TEMP root, superseded on merge with the pipeline branch (assessment/cook-il).",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@duckdb/node-api": "1.4.5-r.1",
+    "ngeohash": "0.6.4",
+    "@types/ngeohash": "0.6.8",
+    "typescript": "5.9.3"
+  }
+}
