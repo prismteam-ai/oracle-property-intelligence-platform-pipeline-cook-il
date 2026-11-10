@@ -24,6 +24,7 @@ const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify
   --as-of <date>      roof-age / open-days as-of date (transform; default today)
   --run <run_id>      run to publish / verify (verify: default latest under publications/)
   --previous <run_id> previous run for the CID chain (publish; default: the run's previous_run_id)
+  --car-url <url>     where the CAR is downloadable, e.g. a GitHub Release asset (publish; manifest car.release_url)
   --verifier <name>   who verifies, e.g. pipeline-host or github-actions (default pipeline-host)
   --publications <d>  committed manifest dir (default ./publications)
   --limit <n>         bbb: contractors to look up, most permit links first (default 150)
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
       "as-of": { type: "string" },
       run: { type: "string" },
       previous: { type: "string" },
+      "car-url": { type: "string" },
       verifier: { type: "string", default: "pipeline-host" },
       publications: { type: "string", default: "publications" },
       limit: { type: "string", default: "150" },
@@ -69,6 +71,7 @@ async function main(): Promise<void> {
       const r = await publish({
         runId: values.run,
         previous: values.previous,
+        carUrl: values["car-url"],
         dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",
         publicationsDir,
         verifier: values.verifier,

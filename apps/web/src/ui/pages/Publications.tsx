@@ -60,9 +60,23 @@ export function Publications() {
               ["IPNS", m?.ipns ? `${m.ipns.name} → ${m.ipns.resolved_cid}` : "not used"],
               [
                 "CAR",
-                m
-                  ? `${m.car.name} · ${fmt(m.car.size)} bytes · sha256 ${m.car.sha256} · cid ${fmt(m.car.cid)} · ${carOnDisk ? "on disk" : "not on this host (kept under data/publications on the pipeline host)"}`
-                  : "—",
+                m ? (
+                  <span data-testid="car">
+                    {m.car.name} · {fmt(m.car.size)} bytes · sha256 {m.car.sha256} · cid{" "}
+                    {fmt(m.car.cid)} ·{" "}
+                    {carOnDisk ? (
+                      "on disk"
+                    ) : m.car.release_url ? (
+                      <>
+                        in GitHub Release <ExtLink href={m.car.release_url} />
+                      </>
+                    ) : (
+                      "not on this host (kept under data/publications on the pipeline host)"
+                    )}
+                  </span>
+                ) : (
+                  "—"
+                ),
               ],
               ["origins", m?.origins.join(", ") || "—"],
               [
