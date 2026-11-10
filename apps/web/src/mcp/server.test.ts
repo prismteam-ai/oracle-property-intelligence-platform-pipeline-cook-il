@@ -19,6 +19,7 @@ import {
 
 let ds: Dataset;
 let app: ReturnType<typeof createApp>;
+let ctx: ReturnType<typeof createContext>;
 const TOKEN = "test-token";
 const headers = {
   "content-type": "application/json",
@@ -30,7 +31,7 @@ beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), "cook-il-mcp-"));
   await makeFixture(join(dir, "cook_il.duckdb"), join(dir, "publications"));
   ds = await openDataset(join(dir, "cook_il.duckdb"), join(dir, "dataset"));
-  const ctx = createContext({
+  ctx = createContext({
     ds,
     env: loadEnv({ MCP_HTTP_AUTH_TOKEN: TOKEN }),
     pubDirs: [join(dir, "publications")],
@@ -149,25 +150,90 @@ describe("http basics", () => {
     });
     expect(res.status).toBe(400);
   });
-  it("query.sql and /mcp share a 60/min limit per client IP", async () => {
-    const ip = { "x-forwarded-for": "203.0.113.9" };
-    const sql = () =>
-      app.request("/trpc/query.sql", {
+  it("MCP lifecycle and SSE traffic do not consume the tool budget", async () => {
+    const limited = createApp(ctx, { uiDir: "/no-ui", build: { commit: "test", builtAt: "now" } });
+    const post = (method: string, params: unknown = {}, id: number | null = 1) =>
+      limited.request("/mcp", {
         method: "POST",
-        headers: { "content-type": "application/json", ...ip },
+        headers,
+        body: JSON.stringify({ jsonrpc: "2.0", ...(id === null ? {} : { id }), method, params }),
+      });
+    for (let i = 0; i < 65; i++) {
+      expect(
+        (
+          await post("initialize", {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "test", version: "1" },
+          })
+        ).status,
+      ).toBe(200);
+      expect((await post("notifications/initialized", {}, null)).status).toBe(202);
+      expect((await post("tools/list")).status).toBe(200);
+      expect(
+        (await limited.request("/mcp", { headers: { ...headers, accept: "text/event-stream" } }))
+          .status,
+      ).not.toBe(429);
+    }
+    for (let i = 0; i < 120; i++) {
+      const res = await post("tools/call", { name: "getDatasetInfo", arguments: {} });
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { result: { isError?: boolean } }).result.isError).not.toBe(
+        true,
+      );
+    }
+    expect((await post("tools/call", { name: "getDatasetInfo", arguments: {} })).status).toBe(429);
+    expect((await post("tools/list")).status).toBe(200);
+  });
+  it("MCP and SQL budgets are independent; spoofed headers cannot reset the authenticated budget", async () => {
+    const limited = createApp(ctx, { uiDir: "/no-ui", build: { commit: "test", builtAt: "now" } });
+    const sql = () =>
+      limited.request("/trpc/query.sql", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.9" },
         body: JSON.stringify({ sql: "SELECT 1" }),
       });
-    const mcp = () =>
-      app.request("/mcp", {
-        method: "POST",
-        headers: { ...headers, ...ip },
-        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
-      });
-    for (let i = 0; i < 30; i++) expect((await sql()).status).toBe(200);
-    for (let i = 0; i < 30; i++) expect((await mcp()).status).toBe(200);
+    for (let i = 0; i < 60; i++) expect((await sql()).status).toBe(200);
     expect((await sql()).status).toBe(429);
-    expect((await mcp()).status).toBe(429);
-    expect((await app.request("/health")).status).toBe(200);
+    const call = (ip: string, token = TOKEN, session?: string) =>
+      limited.request("/mcp", {
+        method: "POST",
+        headers: {
+          ...headers,
+          authorization: `Bearer ${token}`,
+          "x-forwarded-for": ip,
+          "x-real-ip": ip,
+          ...(session ? { "mcp-session-id": session } : {}),
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "getDatasetInfo", arguments: {} },
+        }),
+      });
+    for (let i = 0; i < 120; i++) expect((await call(`198.51.100.${i}`)).status).toBe(200);
+    const denied = await call("192.0.2.1", TOKEN, "new-session");
+    expect(denied.status).toBe(429);
+    expect(denied.headers.get("retry-after")).toBe("60");
+    expect((await call("192.0.2.2", "wrong-token")).status).toBe(401);
+    expect((await limited.request("/health")).status).toBe(200);
+  });
+  it("counts all tool calls in a batch before dispatch", async () => {
+    const limited = createApp(ctx, { uiDir: "/no-ui", build: { commit: "test", builtAt: "now" } });
+    const res = await limited.request("/mcp", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(
+        Array.from({ length: 121 }, (_, id) => ({
+          jsonrpc: "2.0",
+          id,
+          method: "tools/call",
+          params: { name: "getDatasetInfo", arguments: {} },
+        })),
+      ),
+    });
+    expect(res.status).toBe(429);
   });
   it("safeEqual compares in constant time and rejects length mismatches", () => {
     expect(safeEqual("Bearer abc", "Bearer abc")).toBe(true);

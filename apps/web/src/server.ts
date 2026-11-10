@@ -15,17 +15,17 @@ export interface BuildInfo {
   builtAt: string;
 }
 
-/** Fixed-window limiter per client IP. ponytail: in-memory, per-process; fine behind one Caddy instance. */
+/** Fixed-window work limiter keyed by client IP or validated principal; in-memory, per-process. */
 export function rateLimiter(max: number, windowMs: number) {
   const hits = new Map<string, { count: number; reset: number }>();
-  return (ip: string, now = Date.now()): boolean => {
+  return (ip: string, now = Date.now(), cost = 1): boolean => {
     const h = hits.get(ip);
     if (!h || h.reset <= now) {
-      hits.set(ip, { count: 1, reset: now + windowMs });
+      hits.set(ip, { count: cost, reset: now + windowMs });
       if (hits.size > 10_000) for (const [k, v] of hits) if (v.reset <= now) hits.delete(k);
-      return true;
+      return cost <= max;
     }
-    h.count++;
+    h.count += cost;
     return h.count <= max;
   };
 }
@@ -43,7 +43,8 @@ const clientIp = (c: { req: { header(name: string): string | undefined } }): str
 export function createApp(ctx: AppContext, opts: { uiDir: string; build: BuildInfo }): Hono {
   const app = new Hono();
   const agentLimit = rateLimiter(30, 60_000);
-  const queryLimit = rateLimiter(60, 60_000); // shared by the SQL console and /mcp
+  const queryLimit = rateLimiter(60, 60_000); // public SQL console, independent from authenticated MCP
+  const mcpToolLimit = rateLimiter(120, 60_000); // aggregate tool work for the configured bearer principal
 
   app.use("*", async (c, next) => {
     const id = c.req.header("x-request-id") ?? randomUUID();
@@ -108,8 +109,32 @@ export function createApp(ctx: AppContext, opts: { uiDir: string; build: BuildIn
         { error: "unauthorized: send Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>" },
         401,
       );
-    if (!queryLimit(clientIp(c)))
-      return c.json({ error: "rate limit: 60 requests per minute per IP" }, 429);
+    // Lifecycle and SSE reconnect traffic does not execute dataset queries. Charge actual
+    // tool invocations only, including each entry if a client sends a JSON-RPC batch.
+    if (c.req.method === "POST") {
+      const body: unknown = await c.req.raw
+        .clone()
+        .json()
+        .catch(() => null);
+      const messages: unknown[] = Array.isArray(body) ? body : [body];
+      const calls = messages.filter(
+        (message) =>
+          message !== null &&
+          typeof message === "object" &&
+          "method" in message &&
+          message.method === "tools/call",
+      ).length;
+      // The bearer is already validated. All callers of this configured principal share a
+      // work budget; forwarding headers/session IDs cannot spoof a fresh identity or spend
+      // the public SQL budget. A future multi-token server should key by validated principal.
+      if (calls && !mcpToolLimit("authenticated-mcp", Date.now(), calls)) {
+        c.header("Retry-After", "60");
+        return c.json(
+          { error: "rate limit: 120 tool calls per minute per authenticated MCP principal" },
+          429,
+        );
+      }
+    }
     return handleMcpRequest(ctx, c.req.raw);
   });
 

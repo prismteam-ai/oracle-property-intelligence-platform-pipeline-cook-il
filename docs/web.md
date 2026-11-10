@@ -174,7 +174,11 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
 - Fixture data is synthetic; the fixture banner and `FIXTURE DATA` limitations disappear as soon as the real
   `data/cook_il.duckdb` or a Parquet run directory exists.
 - Rate limiting and the geocode cache are in-process (single instance behind Caddy): `agent.ask` 30/min/IP,
-  `query.sql` and `/mcp` 60/min/IP (shared counter).
+  `query.sql` 60/min/IP. Authenticated MCP has a separate aggregate budget of 120 `tools/call`
+  invocations/minute for the configured bearer principal. Initialize, notifications, tool discovery and
+  SSE/reconnect requests require authentication but do not consume query work. Forwarded IP or session
+  headers cannot reset that authenticated budget; each tool call in a batch is counted. A limit response
+  includes `Retry-After: 60`. The public SQL and MCP budgets cannot exhaust each other.
 - SQL sandbox: every DuckDB connection the web opens runs `SET enable_external_access = false` (plus
   `allowed_directories` for the Parquet run directory when served from Parquet) and `SET lock_configuration = true`
   (`lockdown` in `apps/web/src/db/duck.ts`), so `read_csv('/etc/passwd')`, `read_text`, `glob`, `httpfs` and friends
