@@ -7,6 +7,13 @@ const PROPERTY_COLS = Object.keys(PropertySchema.shape);
 const PERMIT_COLS = Object.keys(PermitSchema.shape);
 const CONTRACTOR_COLS = Object.keys(ContractorSchema.shape);
 
+/**
+ * Roof-age anchors before 1900 or after today are source junk (bad year_built / permit dates); keep them out of
+ * roof-age filtering and ordering. Display-only guard: the transform-side quarantine is tracked separately.
+ */
+export const VALID_ANCHOR_SQL =
+  "(roof_age_anchor_date IS NULL OR roof_age_anchor_date BETWEEN DATE '1900-01-01' AND current_date)";
+
 const num = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 function normalize(row: Row, cols: string[]): Row {
@@ -69,7 +76,7 @@ export async function findProperties(
   const where: string[] = [`lat IS NOT NULL AND lon IS NOT NULL AND ${radius.sql}`];
   const params: (string | number)[] = [...radius.params];
   if (input.minRoofAge !== undefined) {
-    where.push("roof_age_years >= ?");
+    where.push(`roof_age_years >= ? AND ${VALID_ANCHOR_SQL}`);
     params.push(input.minRoofAge);
   }
   const openPermitSql = `SELECT max(open_days) FROM permit x WHERE x.pin14 = property.pin14 AND x.is_roofing AND x.status_is_open${

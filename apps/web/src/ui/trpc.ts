@@ -46,3 +46,9 @@ export const fmt = (v: unknown): string => {
   if (typeof v === "string") return v;
   return JSON.stringify(v);
 };
+
+/** Dates before 1900 or after today come from broken source fields; render them flagged, never as facts. */
+export const invalidDate = (d: string | null | undefined): boolean =>
+  !!d && (d < "1900-01-01" || d.slice(0, 10) > new Date().toISOString().slice(0, 10));
+export const fmtDate = (d: string | null | undefined): string =>
+  invalidDate(d) ? `${d} — invalid date (source)` : fmt(d);

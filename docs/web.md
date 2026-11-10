@@ -132,6 +132,11 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
 
 ## Limitations
 
+- Date sanity is display-side only: roof-age anchors and permit dates before 1900 or after today are rendered as
+  "invalid date (source)" on `/explore`, excluded from roof-age filtering/ordering in `search.properties` and from the
+  roof-age sample queries (`VALID_ANCHOR_SQL` in `apps/web/src/search/properties.ts`). The transform-side quarantine
+  of those source rows is tracked as pipeline work and not done here; the Parquet/DuckDB rows are unchanged.
+
 - Fixture data is synthetic; the fixture banner and `FIXTURE DATA` limitations disappear as soon as the real
   `data/cook_il.duckdb` or a Parquet run directory exists.
 - Rate limiting and the geocode cache are in-process (single instance behind Caddy).

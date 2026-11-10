@@ -16,6 +16,7 @@ LIMIT 50`,
     sql: `SELECT pin14, address, city, year_built, roof_age_years, roof_age_basis, roof_age_confidence, roof_age_anchor_date, source_url
 FROM property
 WHERE roof_age_years > 15
+  AND roof_age_anchor_date BETWEEN DATE '1900-01-01' AND current_date -- anchors outside this range are source junk
 ORDER BY roof_age_years DESC
 LIMIT 100`,
   },
@@ -52,6 +53,7 @@ FROM property pr
 JOIN permit pe ON pe.pin14 = pr.pin14 AND pe.is_roofing AND pe.status_is_open
 LEFT JOIN contractor c ON c.contractor_id = pe.contractor_id
 WHERE pr.roof_age_years > 15
+  AND pr.roof_age_anchor_date BETWEEN DATE '1900-01-01' AND current_date
 ORDER BY pe.open_days DESC
 LIMIT 100`,
   },
