@@ -17,20 +17,20 @@ county whose data is published through open-data portals rather than scraped por
 
 See `docs/sources.md` for dataset ids, counts, fields and speed. Summary:
 
-| Need                                | Source                                              | Mode                              |
-| ----------------------------------- | --------------------------------------------------- | --------------------------------- |
-| Parcels + coordinates               | Assessor Parcel Universe (Current Year) `pabr-t5kh` | bulk API                          |
-| Year built / roof construction      | Residential Characteristics `x54s-btds` (year=2026) | bulk API                          |
-| Situs + mailing/owner name          | Parcel Addresses `3723-97qp` (year=2026)            | bulk API                          |
-| Sales / ownership change            | Parcel Sales `wvhk-k5uv`                            | bulk API                          |
-| Permits (countywide)                | Assessor Permits `6yjf-dfxs`                        | bulk API                          |
-| Permits (Chicago, with contractors) | Chicago Building Permits `ydr8-5enu`                | bulk API                          |
-| Business records                    | Chicago Business Licenses `r5kz-chrr`               | bulk API                          |
-| Roofing contractors                 | IDFPR licenses `pzzh-kp68`                          | bulk API                          |
-| Deeds / mortgages / liens           | Cook County Clerk Recordings                        | portal only, no bulk — not loaded |
-| Tax payments                        | Cook County Treasurer                               | portal only — not loaded          |
-| Chicago trade licenses              | chicago.gov HTML search                             | not bulk — not loaded             |
-| BBB ratings                         | bbb.org                                             | not harvested yet                 |
+| Need                                | Source                                              | Mode                                |
+| ----------------------------------- | --------------------------------------------------- | ----------------------------------- |
+| Parcels + coordinates               | Assessor Parcel Universe (Current Year) `pabr-t5kh` | bulk API                            |
+| Year built / roof construction      | Residential Characteristics `x54s-btds` (year=2026) | bulk API                            |
+| Situs + mailing/owner name          | Parcel Addresses `3723-97qp` (year=2026)            | bulk API                            |
+| Sales / ownership change            | Parcel Sales `wvhk-k5uv`                            | bulk API                            |
+| Permits (countywide)                | Assessor Permits `6yjf-dfxs`                        | bulk API                            |
+| Permits (Chicago, with contractors) | Chicago Building Permits `ydr8-5enu`                | bulk API                            |
+| Business records                    | Chicago Business Licenses `r5kz-chrr`               | bulk API                            |
+| Roofing contractors                 | IDFPR licenses `pzzh-kp68`                          | bulk API                            |
+| Deeds / mortgages / liens           | Cook County Clerk Recordings                        | portal only, no bulk — not loaded   |
+| Tax payments                        | Cook County Treasurer                               | portal only — not loaded            |
+| Chicago trade licenses              | chicago.gov HTML search                             | not bulk — not loaded               |
+| BBB ratings                         | bbb.org via Internet Archive (`docs/bbb.md`)        | harvested: 21 stale, 33,410 unknown |
 
 ## 3. Permit jurisdictions
 
@@ -60,10 +60,12 @@ See `docs/sources.md` for dataset ids, counts, fields and speed. Summary:
 ## 5. BBB stance
 
 - BBB Chicago & Northern Illinois lists roofing contractors; listing pages cap at ~24 per
-  page and the advertised category total is not a harvestable count. Not harvested in this
-  milestone: every contractor row carries `bbb_state = 'unknown'`, `bbb_rating = null`.
-  The `bbb-harvest` skill flow (search by normalized name + city, record
-  `confirmed_present/confirmed_empty/unavailable`) is the planned next step.
+  page and the advertised category total is not a harvestable count. Harvested on 2026-11-10
+  with `pipeline bbb --limit 150` (`docs/bbb.md`): bbb.org returns 403 at `robots.txt`, so
+  ratings come from Internet Archive captures of profile pages. Result: 21 contractors
+  `bbb_state = 'stale'` (archived A+ ratings dated 2018–2026), 129 `unavailable`
+  (`access_boundary_403` / `ambiguous_name_slug`), 33,410 still `unknown`, `bbb_rating = null`.
+  Contractor identity stays the IDFPR roster; BBB never creates a `contractor_id`.
 
 ## 6. Geo / coordinates
 
@@ -92,7 +94,7 @@ See `docs/sources.md` for dataset ids, counts, fields and speed. Summary:
   status is terminal (they are not), so they do not reset roof age.
 - Suburban permit portals: enumerate and classify each of the ~130 municipalities before
   any runtime-retrieval adapter (not done; see `runtime/cook-sources.yaml`).
-- Destination for IPFS/Elephant publication and the BBB harvest are the next milestones.
+- IPFS publication (`docs/publish.md`) and the BBB harvest (`docs/bbb.md`) are done; widening BBB coverage beyond archived `roofing-contractors` profiles is open.
 
 ## Readiness validator result
 

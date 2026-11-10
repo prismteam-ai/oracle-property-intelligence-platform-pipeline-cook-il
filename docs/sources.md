@@ -73,4 +73,4 @@ host (four datasets share its 4-slot limit).
 - Chicago permits before 2006 (303k) have no status and are never counted as open.
 - Suburban municipal permit portals are not bulk-available; the Assessor permit feed is the only countywide permit source and it carries no contractor identity beyond `applicant_name`.
 - Cook County Clerk recordings, Treasurer payments and Chicago trade licenses (HTML search only) are not loaded.
-- BBB ratings are not harvested (`bbb_state = 'unknown'`).
+- BBB ratings are harvested as reputation only (`pipeline bbb`, `docs/bbb.md`): live bbb.org answers 403 at `robots.txt`, so the 2026-11-10 run found 21 archived profiles (`bbb_state = 'stale'`, all A+), marked 129 candidates `unavailable` and left 33,410 contractors `unknown`.

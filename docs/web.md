@@ -170,7 +170,9 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
 - The UI bundle includes MapLibre (~1.4 MB minified, 400 kB gzip); no code splitting yet.
 - Public gateway verification: both the pipeline host and GitHub Actions get HTTP 429 from `ipfs.io` and
   `dweb.link` (0/26 and 0/27 objects in `publications/20261110T204914Z/verification.json` and
-  `publications/20261110T205226Z/verification.json`), while `gw.ipfs-lens.dev` (26/26, 27/27),
+  `publications/20261110T205226Z/verification.json`; the GitHub Actions record is
+  `publications/20261110T204914Z/verification-github-actions.json`, verifier `github-actions`, verified
+  2026-11-10T22:52:49Z: ipfs-lens 26/26, dget.top 14/26, ipfs.io 0/26, dweb.link 0/26, pinata 26/26, filebase 26/26), while `gw.ipfs-lens.dev` (26/26, 27/27),
   `gateway.pinata.cloud` and `ipfs.filebase.io` (pinning providers, all objects) serve the bytes and `dget.top`
   serves the small files (16/26, 20/27; the Parquet parts time out or return 504). The verification records
   (`publications/*/verification*.json`) are the evidence; the "Publication proof" card on `/` and the
