@@ -19,7 +19,7 @@ afterAll(() => {
 describe("Duck", () => {
   it("writes now() as UTC wall time regardless of the host zone", async () => {
     const row = await db.one<{ ts: string; off: number }>(
-      "select now()::timestamp::varchar as ts, epoch(now()) - epoch(now()::timestamp) as off",
+      "select now()::timestamp::varchar as ts, epoch_us(now()) - epoch_us(now()::timestamp) as off",
     );
     expect(Number(row?.off)).toBe(0);
     expect(row?.ts.slice(0, 10)).toBe(new Date().toISOString().slice(0, 10));
