@@ -1,0 +1,34 @@
+services:
+  web:
+    build: { context: ., args: { GIT_COMMIT: "${GIT_COMMIT:-unknown}" } }
+    image: oracle-cook-il:local
+    # placeholder until apps/web lands: serves /health and /build.json from the pipeline CLI
+    command: ["node", "apps/pipeline/dist/cli.js", "serve"]
+    ports: ["8080:8080"]
+    env_file: .env
+    environment: { DATA_DIR: /app/data, PORT: "8080" }
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  pipeline:
+    image: oracle-cook-il:local
+    depends_on: [web]
+    # incremental run every 6h; first run happens at start
+    command:
+      - sh
+      - -c
+      - "while true; do node apps/pipeline/dist/cli.js run --incremental; sleep 21600; done"
+    env_file: .env
+    environment: { DATA_DIR: /app/data }
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped

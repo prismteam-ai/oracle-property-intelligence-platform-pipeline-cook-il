@@ -1,0 +1,6 @@
+dist
+node_modules
+data
+pnpm-lock.yaml
+.turbo
+README.md
