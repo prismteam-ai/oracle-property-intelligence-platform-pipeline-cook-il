@@ -1,0 +1,117 @@
+# Explorer web app, agent and MCP server (`apps/web`)
+
+One Node 22 service (Hono, port 8080) that serves the React UI, a tRPC API, an MCP server and an LLM agent over the
+published Cook County query dataset. It reads the dataset read-only and never touches raw staging tables.
+
+## Run
+
+```bash
+pnpm install
+pnpm --filter @cook-il/web build            # tsc (server) + vite (UI) -> apps/web/dist
+pnpm --filter @cook-il/web start            # http://localhost:8080
+# dev: API with reload + Vite dev server (proxies /trpc, /mcp, /health to 8080)
+pnpm --filter @cook-il/web dev
+pnpm --filter @cook-il/web dev:ui           # http://localhost:5173
+```
+
+Environment (see `.env.example`): `PORT` (8080), `DATASET_DB` (`data/cook_il.duckdb`), `DATASET_DIR` (`data/dataset`),
+`PUBLICATIONS_DIR` (`publications`), `OPENAI_API_KEY` (agent; disabled without it), `MCP_HTTP_AUTH_TOKEN` (MCP; 503 without it).
+
+Dataset resolution at startup:
+
+1. If `DATASET_DIR/<run_id>/property/*.parquet` exists and is newer than `DATASET_DB`, the service opens an in-memory
+   DuckDB with views over the newest Parquet run directory.
+2. Otherwise `DATASET_DB` is opened `READ_ONLY`.
+3. If neither exists, a deterministic **fixture** dataset is generated (`fixtures/make-fixture.ts`: 5,000 properties
+   around Chicago / Evanston / Oak Park, 2,000 permits of which 600 roofing and 150 open for more than three years,
+   300 contractors, 500 businesses, 4,221 sales, 3 runs with placeholder CIDs). The run limitations start with
+   `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook-il/web fixture [db] [publications dir]` regenerates it.
+
+Publications are read from `PUBLICATIONS_DIR/<run_id>/manifest.json` and `verification.json`, falling back to
+`<dirname(DATASET_DB)>/publications/<run_id>/` (where the fixture writes). Expected manifest shape: `run_id`,
+`root_cid`, `manifest_cid`, `tables_cid?`, `previous_root_cid?`, `ipns?: {name, resolved_cid}`, `car?: {name, cid, size}`,
+`artifacts: [{cid, name, size, codec: file|directory, sha256, origins?}]`. Verification:
+`results: [{cid, name?, gateway, url?, status, size_match, digest_match, fetched_at, error?}]`.
+
+Endpoints: `GET /health` -> `{ok, runId, rootCid, dataset, commit}`, `GET /build.json` -> `{commit, builtAt}`
+(`GIT_COMMIT` env, `dist/build.json`, or `git rev-parse HEAD`). Logs are JSON (pino) with an `x-request-id` per request.
+
+## Pages
+
+| Path | Content |
+| --- | --- |
+| `/` | Latest run: run_id, started/finished, status, sources (URL, records, fetched_at, note), provenance (root/manifest CID, served-from), county coverage, live table counts, deltas vs previous run, dead letters, limitations. |
+| `/runs` | All runs with counts, deltas (+/~/−), dead letters, root and manifest CIDs, previous run; run ids link to `/publications/<run_id>`. |
+| `/publications[/:run_id]` | Manifest summary, gateway URLs derived from the CID (ipfs.io, dweb.link), artifact table (cid, name, size, codec, sha256, origins), verification table, CAR, previous CID chain, IPNS if present, raw manifest JSON. |
+| `/query` | Read-only SQL console (single SELECT/WITH, LIMIT ≤ 1000, 10 s timeout) with sample queries for radius, roof > 15 y, open roofing permits with contractor + BBB, no ownership change > 10 y, out-of-area owners, lead shortlist, counts. |
+| `/explore` | MapLibre map (OpenFreeMap liberty style). Click to drop a pin, radius, min roof age, open-roofing-only, min open years. Results list roof-age basis/confidence, coordinates, open_days, contractor, BBB, provenance (source_system, source_url, ingested_at). |
+| `/agent` | Chat with the two README prompts as one-click examples. |
+| `/mcp` | MCP tool list, curl / Inspector examples, bearer-token note. |
+
+Every number and source URL is rendered as text; key elements carry `data-testid`. Layout works at 390 / 768 / 1440 px.
+
+## tRPC API (`/trpc`, `AppRouter` in `apps/web/src/api/router.ts`)
+
+| Procedure | Input | Output |
+| --- | --- | --- |
+| `runs.latest` (query) | – | `{run, source, previous, table_counts, coverage, dataset_origin, run_count}` |
+| `runs.list` (query) | – | `Run[]` |
+| `runs.get` (query) | `{run_id}` | `Run` |
+| `publications.get` (query) | `{run_id}` | `{run, publication: {manifest, manifest_raw, verification, files, dir}, root_cid, manifest_cid, gateway_urls, artifacts[+gateways]}` |
+| `query.sql` (mutation) | `{sql, limit?≤1000}` | `{columns, rows, rowCount, truncated, ms, source}` (400 on forbidden SQL) |
+| `query.schema` (query) | – | `[{name, columns: [{name, type}]}]` |
+| `search.properties` (query) | `{lat, lon, radiusMiles≤50, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?≤500}` | `{properties: [property + distance_miles + permits: [permit + contractor]], total_in_radius, source}` |
+| `property.get` (query) | `{pin14}` | `{property \| null, source}` |
+| `agent.ask` (mutation) | `{question}` | `{answer, steps: [{tool, args}], source, model}` (30 req/min/IP) |
+
+Radius search: geohash prefix prefilter (precision chosen from the radius, centre + 8 neighbours) then exact haversine in
+SQL; ordered by distance, or by longest-open roofing permit when `openRoofingPermitsOnly` is set.
+
+## MCP server (`POST /mcp`, streamable HTTP, stateless)
+
+Auth: `Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>`; 401 otherwise. Contracts (Zod) live in
+`apps/web/src/mcp/contracts.ts`; every tool output includes `source: {runId, rootCid, manifestCid, tablesCid?, syncedAt}`.
+
+| Tool | Input | Output |
+| --- | --- | --- |
+| `getDatasetInfo` | `{}` | `{runId, rootCid, manifestCid, tablesCid?, counts, limitations, syncedAt, source}` |
+| `getSchema` | `{}` | `{tables: [{name, columns: [{name, type}]}], source}` |
+| `queryDataset` | `{sql, limit?≤1000}` | `{columns, rows, rowCount, truncated, source}` — one SELECT/WITH only |
+| `findProperties` | `{lat, lon, radiusMiles, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?}` | `{properties: [property + permits: [permit + contractor?]], total_in_radius, source}` |
+| `getProperty` | `{pin14}` | `{property \| null, source}` |
+
+```bash
+H=(-H "Authorization: Bearer $MCP_HTTP_AUTH_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream")
+curl -s http://localhost:8080/mcp "${H[@]}" -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
+curl -s http://localhost:8080/mcp "${H[@]}" -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+curl -s http://localhost:8080/mcp "${H[@]}" -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"findProperties","arguments":{"lat":42.0451,"lon":-87.6877,"radiusMiles":2,"minRoofAge":15,"openRoofingPermitsOnly":true,"limit":5}}}'
+# MCP Inspector
+npx @modelcontextprotocol/inspector --transport http --server-url http://localhost:8080/mcp --header "Authorization: Bearer $MCP_HTTP_AUTH_TOKEN"
+```
+
+## Agent
+
+Vercel AI SDK `generateText` tool loop (`maxSteps: 8`) on `@ai-sdk/openai` `gpt-4.1-mini`. Tools: `geocode_place`
+(Nominatim with User-Agent, in-memory cache, built-in fallback for Chicago / Evanston / Oak Park / Skokie / Cicero),
+`find_properties`, `open_roofing_permits`, `run_sql_readonly` (same SQL guard, 200 rows). The system prompt requires
+pin14 / permit ids with `source_url`, explicit assumptions and a list of missing data (e.g. BBB unavailable). Example prompts:
+
+- "Which properties in Cook County within five miles of Evanston have roofs older than 15 years?"
+- "Which properties near that area have open roofing permits that have been open for many years, and who is the listed contractor?"
+
+## Tests
+
+```bash
+pnpm --filter @cook-il/web lint        # eslint + prettier
+pnpm --filter @cook-il/web typecheck   # server + UI tsconfig
+pnpm --filter @cook-il/web test        # vitest: 31 tests (search math, SQL guard, MCP contracts over HTTP, manifest rendering, agent with mocked model)
+pnpm --filter @cook-il/web test:e2e    # playwright: builds, generates the fixture, starts the server on 8089, 11 smoke tests (every page, MCP endpoint, 390/768/1440)
+```
+
+## Limitations
+
+- Fixture data is synthetic; the fixture banner and `FIXTURE DATA` limitations disappear as soon as the real
+  `data/cook_il.duckdb` or a Parquet run directory exists.
+- Rate limiting and the geocode cache are in-process (single instance behind Caddy).
+- Agent answers are bounded to 15 rows per tool call to keep the model context small; the UI and MCP expose up to 500.
+- The UI bundle includes MapLibre (~1.4 MB minified, 400 kB gzip); no code splitting yet.

@@ -83,7 +83,10 @@ export function createApp(ctx: AppContext, opts: { uiDir: string; build: BuildIn
       exposeHeaders: ['Mcp-Session-Id'],
     }),
   );
-  app.all('/mcp', async (c) => {
+  app.use('/mcp', async (c, next) => {
+    // Browser navigation (GET text/html) falls through to the UI docs page; MCP clients use POST or GET+SSE.
+    if (c.req.method === 'GET' && !(c.req.header('accept') ?? '').includes('text/event-stream'))
+      return next();
     const token = ctx.env.MCP_HTTP_AUTH_TOKEN;
     if (!token) return c.json({ error: 'MCP disabled: MCP_HTTP_AUTH_TOKEN not configured' }, 503);
     const auth = c.req.header('authorization') ?? '';

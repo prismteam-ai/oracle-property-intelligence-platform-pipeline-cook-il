@@ -79,20 +79,16 @@ export const appRouter = t.router({
     schema: p.query(({ ctx }) => tableSchema(ctx.ds)),
   }),
   search: t.router({
-    properties: p
-      .input(FindPropertiesInput)
-      .query(async ({ ctx, input }) => ({
-        ...(await findProperties(ctx.ds, input)),
-        source: (await ctx.info()).source,
-      })),
+    properties: p.input(FindPropertiesInput).query(async ({ ctx, input }) => ({
+      ...(await findProperties(ctx.ds, input)),
+      source: (await ctx.info()).source,
+    })),
   }),
   property: t.router({
-    get: p
-      .input(GetPropertyInput)
-      .query(async ({ ctx, input }) => ({
-        property: await getProperty(ctx.ds, input.pin14),
-        source: (await ctx.info()).source,
-      })),
+    get: p.input(GetPropertyInput).query(async ({ ctx, input }) => ({
+      property: await getProperty(ctx.ds, input.pin14),
+      source: (await ctx.info()).source,
+    })),
   }),
   agent: t.router({
     ask: p
