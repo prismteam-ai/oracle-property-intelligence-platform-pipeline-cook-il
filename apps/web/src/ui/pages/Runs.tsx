@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Status, Table } from "../components.js";
-import { fmt, trpc, useAsync } from "../trpc.js";
+import { fmt, fmtTs, trpc, useAsync } from "../trpc.js";
 
 export function Runs() {
   const q = useAsync(() => trpc.runs.list.query(), "runs");
@@ -23,8 +23,8 @@ export function Runs() {
           },
           { key: "status" },
           { key: "mode" },
-          { key: "started_at" },
-          { key: "finished_at", render: (r) => fmt(r.finished_at) },
+          { key: "started_at", label: "started at (UTC)", render: (r) => fmtTs(r.started_at) },
+          { key: "finished_at", label: "finished at (UTC)", render: (r) => fmtTs(r.finished_at) },
           ...tables.map((t) => ({
             key: t,
             label: `${t} (+ins / ~upd / =unch)`,

@@ -25,12 +25,18 @@ test("run summary shows run id, sources, counts, deltas, limitations", async ({ 
   await expect(page.getByTestId("deltas")).toContainText("property");
   await expect(page.getByTestId("dead-letters")).toContainText("HTTP 429");
   await expect(page.getByTestId("limitations")).toContainText("FIXTURE DATA");
+  await expect(page.getByTestId("card-started")).toContainText(
+    /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/,
+  );
+  await expect(page.getByTestId("card-finished")).toContainText(/T\d{2}:\d{2}:\d{2}Z/);
 });
 
 test("run history lists all runs with CIDs and links to publications", async ({ page }) => {
   await page.goto("/runs");
   const rows = page.getByTestId("runs").locator("tbody tr");
   await expect(rows).toHaveCount(3);
+  for (const cell of await rows.first().locator("td").nth(3).allTextContents())
+    expect(cell).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   await expect(page.getByTestId("runs")).toContainText("bafybeifixturerootone");
   await expect(page.getByTestId("runs")).toContainText("bafybeifixturemanifestthree");
   await page.getByRole("link", { name: "2026-11-08T02-00-00Z" }).click();

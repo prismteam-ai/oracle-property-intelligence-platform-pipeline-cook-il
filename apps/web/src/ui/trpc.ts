@@ -52,3 +52,15 @@ export const invalidDate = (d: string | null | undefined): boolean =>
   !!d && (d < "1900-01-01" || d.slice(0, 10) > new Date().toISOString().slice(0, 10));
 export const fmtDate = (d: string | null | undefined): string =>
   invalidDate(d) ? `${d} — invalid date (source)` : fmt(d);
+
+/**
+ * Timestamps as UTC with a Z suffix, second precision. DuckDB TIMESTAMP columns come back naive
+ * ("2026-11-10 22:17:16.158255"); the pipeline writes them in UTC, so they are read as UTC. Offsets are converted.
+ */
+export const fmtTs = (v: string | null | undefined): string => {
+  if (!v) return "—";
+  const naive = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(\.\d+)?$/.exec(v);
+  if (naive) return `${naive[1]}T${naive[2]}Z`;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? v : d.toISOString().replace(/\.\d{3}Z$/, "Z");
+};

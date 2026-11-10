@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Card, ExtLink, FixtureBanner, Kv, Status, Table } from "../components.js";
-import { fmt, trpc, useAsync } from "../trpc.js";
+import { fmt, fmtTs, trpc, useAsync } from "../trpc.js";
 import { gatewayKind } from "./Publications.js";
 
 export function RunSummary() {
@@ -31,8 +31,12 @@ export function RunSummary() {
           sub={`status: ${run.status}`}
           testId="card-run"
         />
-        <Card label="Started" value={run.started_at} testId="card-started" />
-        <Card label="Finished" value={run.finished_at ?? "running"} testId="card-finished" />
+        <Card label="Started (UTC)" value={fmtTs(run.started_at)} testId="card-started" />
+        <Card
+          label="Finished (UTC)"
+          value={run.finished_at ? fmtTs(run.finished_at) : "running"}
+          testId="card-finished"
+        />
         <Card
           label="Properties"
           value={fmt(table_counts.property)}
@@ -106,7 +110,7 @@ export function RunSummary() {
             "manifest CID",
             source.manifestCid ? `${source.manifestCid} (sha256 of manifest.json)` : "—",
           ],
-          ["synced at", source.syncedAt],
+          ["synced at (UTC)", fmtTs(source.syncedAt)],
           [
             "served from",
             dataset_origin.kind === "duckdb"
@@ -140,7 +144,7 @@ export function RunSummary() {
             label: "last fetched at",
             render: (r) =>
               r.last_fetch
-                ? `${fmt(r.last_fetch.fetched_at)} (run ${r.last_fetch.run_id}${r.last_fetch.rows_fetched === null ? ", from watermark" : ""})`
+                ? `${fmtTs(r.last_fetch.fetched_at)} (run ${r.last_fetch.run_id}${r.last_fetch.rows_fetched === null ? ", from watermark" : ""})`
                 : "never fetched",
           },
           {
@@ -232,7 +236,7 @@ export function RunSummary() {
           { key: "stage" },
           { key: "key", render: (d) => fmt(d.key) },
           { key: "error", wrap: true },
-          { key: "at" },
+          { key: "at", label: "at (UTC)", render: (d) => fmtTs(d.at) },
         ]}
       />
 

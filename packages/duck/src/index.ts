@@ -13,6 +13,8 @@ export class Duck {
   static async open(path = ":memory:", options: Record<string, string> = {}): Promise<Duck> {
     const instance = await DuckDBInstance.create(path, options);
     const conn = await instance.connect();
+    // now()::timestamp is wall time in the session zone; pin it so run/ingest timestamps are UTC on every host
+    await conn.run("SET TimeZone = 'UTC'");
     return new Duck(instance, conn);
   }
 

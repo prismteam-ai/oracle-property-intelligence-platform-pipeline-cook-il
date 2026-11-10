@@ -17,6 +17,13 @@ afterAll(() => {
 });
 
 describe("Duck", () => {
+  it("writes now() as UTC wall time regardless of the host zone", async () => {
+    const row = await db.one<{ ts: string; off: number }>(
+      "select now()::timestamp::varchar as ts, epoch(now()) - epoch(now()::timestamp) as off",
+    );
+    expect(Number(row?.off)).toBe(0);
+    expect(row?.ts.slice(0, 10)).toBe(new Date().toISOString().slice(0, 10));
+  });
   it("runs SQL with parameters and reads plain rows", async () => {
     await db.exec("create table t(id integer, name varchar, d date, ts timestamp)");
     await db.exec("insert into t values (?, ?, ?, ?)", [
