@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { config as loadDotenv } from "dotenv";
 import { Duck } from "@cook/duck";
 import { loadEnv } from "./env.js";
+import { fetchSources, type FetchResult } from "./fetch.js";
 import { log, newRunId } from "./log.js";
 import { fetchStep, finishRun, readBuildInfo, runAll, startRun, type RunContext } from "./run.js";
 import { countUrl, fetchJson, whereClause } from "./socrata.js";
@@ -19,6 +20,14 @@ const USAGE = `pipeline <discover|fetch|stage|transform|run|serve> [options]
   --source <system>   restrict to one source (repeatable)
   --data <dir>        data directory (default $DATA_DIR or ./data)
   --as-of <date>      roof-age / open-days as-of date (transform; default today)`;
+
+const summary = (x: FetchResult) => ({
+  source: x.source_system,
+  batch: x.batch_id,
+  rows: x.done?.rows_fetched ?? null,
+  seconds: x.done?.seconds ?? null,
+  failed_pages: x.dead_letters.length,
+});
 
 async function main(): Promise<void> {
   loadDotenv({ quiet: true });
@@ -68,6 +77,15 @@ async function main(): Promise<void> {
     return;
   }
 
+  const sampleRows = values.sample ? Number(values.sample) : undefined;
+  if (cmd === "fetch" && !values.incremental) {
+    // plain fetch needs no database (and must not hold its lock while stage/transform run)
+    const batchId = sampleRows ? "sample" : "full";
+    const r = await fetchSources({ dataDir, auth, log: runLog, batchId, sampleRows, sources });
+    console.log(JSON.stringify(r.map(summary)));
+    return;
+  }
+
   const db = await Duck.open(join(dataDir, "cook_il.duckdb"));
   try {
     const ctx: RunContext = {
@@ -78,21 +96,11 @@ async function main(): Promise<void> {
       runId,
       incremental: values.incremental,
       sources,
-      sampleRows: values.sample ? Number(values.sample) : undefined,
+      sampleRows,
     };
     if (cmd === "fetch") {
       const r = await fetchStep(ctx);
-      console.log(
-        JSON.stringify(
-          r.map((x) => ({
-            source: x.source_system,
-            batch: x.batch_id,
-            rows: x.done?.rows_fetched ?? null,
-            seconds: x.done?.seconds ?? null,
-            failed_pages: x.dead_letters.length,
-          })),
-        ),
-      );
+      console.log(JSON.stringify(r.map(summary)));
     } else if (cmd === "stage") {
       const r = await stageAll(db, dataDir, runId, runLog, sources);
       console.log(JSON.stringify(r));

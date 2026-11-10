@@ -1,4 +1,4 @@
-import { createWriteStream, mkdirSync, rmSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { quoteString, type Duck } from "@cook/duck";
 import {
@@ -9,7 +9,6 @@ import {
   ROOFING_RULE,
   SQL_NORMALIZE_NAME,
   SQL_STRIP_SUFFIXES,
-  geohash6,
   type Delta,
 } from "@cook/shared";
 import type { Logger } from "./log.js";
@@ -59,7 +58,7 @@ export async function transform(
   await step("business", businessSql(runId));
   await step("property_base", propertyBaseSql(runId, asOf));
   await step("contractor_name_index", contractorIndexSql());
-  await step("permit", permitSql(runId, asOf));
+  for (const [i, sql] of permitSql(runId, asOf).entries()) await step(`permit_${i}`, sql);
   await step("roof_age", roofAgeSql(asOf));
   await fillGeohash(db, o.log);
   await step(
@@ -208,7 +207,7 @@ function propertyBaseSql(runId: string, asOf: string): string {
     where length(regexp_replace(p.pin, '[^0-9]', '', 'g')) = 14`;
 }
 
-function permitSql(runId: string, asOf: string): string {
+function permitSql(runId: string, asOf: string): string[] {
   const cook = findSource("cook_assessor_permits");
   const chi = findSource("chicago_permits");
   const roofing = (col: string) =>
@@ -224,10 +223,10 @@ function permitSql(runId: string, asOf: string): string {
     .join(", ");
   const openCook = `status is not null and upper(trim(status)) not in (${inList(CLOSED_STATUSES["cook_assessor_permits"]!)})`;
   const openChi = `permit_status is not null and upper(trim(permit_status)) not in (${inList(CLOSED_STATUSES["chicago_permits"]!)})`;
-  return `create or replace table permit as
-    with prop as (select pin14, pin10, lat, lon from property where lat is not null),
-    prop10 as (select pin10, min(pin14) as pin14, avg(lat) as lat, avg(lon) as lon from prop group by pin10),
-    base as (
+  // first 10-digit pin in pin_list that is not the 0000000000 placeholder
+  const chiPin10 = `nullif(regexp_extract(replace(coalesce(pin_list, ''), '0000000000', ''), '([0-9]{10})', 1), '')`;
+  return [
+    `create or replace temp table permit_base as
       select 'cook_assessor_permits:' || source_record_key as permit_id, 'cook_assessor_permits' as source_system,
         ${pin14("pin")} as pin14, null::varchar as pin10, nullif(trim(property_address), '') as address,
         null::double as lat, null::double as lon, job_code_primary as permit_type, work_description,
@@ -238,7 +237,7 @@ function permitSql(runId: string, asOf: string): string {
       from raw_cook_assessor_permits
       union all
       select 'chicago_permits:' || coalesce(nullif(permit_, ''), source_record_key), 'chicago_permits',
-        null, (select p from unnest(string_split(coalesce(pin_list, ''), '|')) as t(p) where regexp_replace(p, '[^0-9]', '', 'g') ~ '^[0-9]{10}$' and regexp_replace(p, '[^0-9]', '', 'g') <> '0000000000' limit 1),
+        null, ${chiPin10}, -- pin10 only when pin14 unknown, so the parcel fallback join is a pure equi-join
         nullif(trim(concat_ws(' ', street_number, street_direction, street_name)), ''),
         try_cast(latitude as double), try_cast(longitude as double), permit_type, work_description,
         permit_status, ${openChi},
@@ -246,29 +245,35 @@ function permitSql(runId: string, asOf: string): string {
         nullif(trim(contact_1_name), ''), coalesce(${chiContractor}),
         'CITY OF CHICAGO', permit_type = 'PERMIT - NEW CONSTRUCTION', source_record_key, source_record_hash, ${q(sourceUrl(chi))}
       from raw_chicago_permits
-      qualify row_number() over (partition by coalesce(nullif(permit_, ''), source_record_key) order by updated_at desc nulls last) = 1
-    ),
-    geo as (
-      select b.*, coalesce(b.pin14, pp.pin14, p10.pin14) as pin14_resolved,
-        coalesce(b.lat, pp.lat, p10.lat) as lat_resolved, coalesce(b.lon, pp.lon, p10.lon) as lon_resolved
-      from base b
-      left join prop pp on pp.pin14 = b.pin14
-      left join prop10 p10 on b.pin14 is null and p10.pin10 = regexp_replace(b.pin10, '[^0-9]', '', 'g')
-    )
-    select permit_id, source_system, pin14_resolved as pin14, address, lat_resolved as lat, lon_resolved as lon, null::varchar as geohash6,
-      permit_type, work_description, ${roofing("coalesce(work_description, '')")} as is_roofing, ${rule("coalesce(work_description, '')")} as roofing_match_rule,
-      status, status_is_open, issued_at, applied_at, closed_at,
-      case when status_is_open then date_diff('day', coalesce(issued_at, applied_at), ${q(asOf)}::date) end as open_days,
-      applicant_name, contractor_name,
+      qualify row_number() over (partition by coalesce(nullif(permit_, ''), source_record_key) order by updated_at desc nulls last) = 1`,
+    `alter table permit_base add column name_key1 varchar`,
+    `alter table permit_base add column name_key2 varchar`,
+    `update permit_base set name_key1 = ${SQL_NORMALIZE_NAME("contractor_name")} where contractor_name is not null`,
+    `update permit_base set name_key2 = ${SQL_STRIP_SUFFIXES("name_key1")} where name_key1 is not null`,
+    `create or replace temp table prop_geo as select pin14, pin10, lat, lon from property where lat is not null`,
+    `create or replace temp table prop_geo10 as select pin10, min(pin14) as pin14, avg(lat) as lat, avg(lon) as lon from prop_geo group by pin10`,
+    `create or replace table permit as
+    select b.permit_id, b.source_system, coalesce(b.pin14, pp.pin14, p10.pin14) as pin14, b.address,
+      coalesce(b.lat, pp.lat, p10.lat) as lat, coalesce(b.lon, pp.lon, p10.lon) as lon, null::varchar as geohash6,
+      b.permit_type, b.work_description, ${roofing("coalesce(b.work_description, '')")} as is_roofing, ${rule("coalesce(b.work_description, '')")} as roofing_match_rule,
+      b.status, b.status_is_open, b.issued_at, b.applied_at, b.closed_at,
+      case when b.status_is_open then date_diff('day', coalesce(b.issued_at, b.applied_at), ${q(asOf)}::date) end as open_days,
+      b.applicant_name, b.contractor_name,
       coalesce(i1.contractor_id, i2.contractor_id, i3.contractor_id) as contractor_id,
       case when i1.contractor_id is not null then 'exact_normalized' when i2.contractor_id is not null then 'suffix_stripped' when i3.contractor_id is not null then 'dba' end as contractor_match_tier,
-      municipality, is_new_construction,
-      source_system, source_record_key, source_record_hash, src_url || '?' || source_record_key as source_url,
+      b.municipality, b.is_new_construction,
+      b.source_system as source_system, b.source_record_key, b.source_record_hash, b.src_url || '?' || b.source_record_key as source_url,
       now()::timestamp as ingested_at, ${q(runId)} as run_id
-    from geo g
-    left join contractor_name_index i1 on i1.tier = 1 and i1.name_key = ${SQL_NORMALIZE_NAME("g.contractor_name")}
-    left join contractor_name_index i2 on i2.tier = 2 and i2.name_key = ${SQL_STRIP_SUFFIXES(SQL_NORMALIZE_NAME("g.contractor_name"))}
-    left join contractor_name_index i3 on i3.tier = 3 and i3.name_key = ${SQL_NORMALIZE_NAME("g.contractor_name")}`;
+    from permit_base b
+    left join prop_geo pp on pp.pin14 = b.pin14
+    left join prop_geo10 p10 on p10.pin10 = b.pin10
+    left join contractor_name_index i1 on i1.tier = 1 and i1.name_key = b.name_key1
+    left join contractor_name_index i2 on i2.tier = 2 and i2.name_key = b.name_key2
+    left join contractor_name_index i3 on i3.tier = 3 and i3.name_key = b.name_key1`,
+    `drop table permit_base`,
+    `drop table prop_geo`,
+    `drop table prop_geo10`,
+  ];
 }
 
 /** Mirrors estimateRoofAge(): latest completed reroof -> high; completed new construction -> medium; year built -> low. */
@@ -294,33 +299,28 @@ function roofAgeSql(asOf: string): string {
     ) a where a.pin14 = pr.pin14`;
 }
 
-/** geohash6 via a persistent (lat,lon)->geohash cache; only new coordinates go through JS. */
+/** geohash6 as a vectorised SQL macro (15 lon bits + 15 lat bits interleaved, base32). Mirrors shared/geo.ts. */
+export const GEOHASH_MACROS = `
+  create or replace macro gh_bit(latv, lonv, i) as
+    case when i % 2 = 0 then (lonv >> (14 - i // 2)) & 1 else (latv >> (14 - (i - 1) // 2)) & 1 end;
+  create or replace macro gh_chunk(latv, lonv, k) as
+    gh_bit(latv, lonv, 5 * k) * 16 + gh_bit(latv, lonv, 5 * k + 1) * 8 + gh_bit(latv, lonv, 5 * k + 2) * 4
+    + gh_bit(latv, lonv, 5 * k + 3) * 2 + gh_bit(latv, lonv, 5 * k + 4);
+  create or replace macro geohash6(lat, lon) as
+    case when lat is null or lon is null or lat < -90 or lat > 90 or lon < -180 or lon > 180 then null else
+    array_to_string(list_transform(range(0, 6), k -> substr('0123456789bcdefghjkmnpqrstuvwxyz',
+      1 + gh_chunk(least(floor((lat + 90) / 180 * 32768)::bigint, 32767), least(floor((lon + 180) / 360 * 32768)::bigint, 32767), k), 1)), '') end;`;
+
 async function fillGeohash(db: Duck, log: Logger): Promise<void> {
-  await db.exec(
-    "create table if not exists geohash_cache(lat double, lon double, geohash6 varchar)",
-  );
-  const tables = ["property", "permit", "business"];
   const t0 = Date.now();
-  const missing = await db.query<{ lat: number; lon: number }>(`
-    select distinct lat, lon from (${tables.map((t) => `select lat, lon from ${t}`).join(" union all ")}) u
-    where lat is not null and lon is not null and lat between -90 and 90 and lon between -180 and 180
-      and not exists (select 1 from geohash_cache c where c.lat = u.lat and c.lon = u.lon)`);
-  if (missing.length) {
-    const tmp = join(process.env["TMPDIR"] ?? "/tmp", `geohash-${process.pid}.csv`);
-    const w = createWriteStream(tmp);
-    for (const { lat, lon } of missing) w.write(`${lat},${lon},${geohash6(lat, lon)}\n`);
-    await new Promise<void>((res, rej) => w.end(() => res()).on("error", rej));
-    await db.exec(
-      `insert into geohash_cache select * from read_csv(${q(tmp)}, header = false, columns = {'lat': 'DOUBLE', 'lon': 'DOUBLE', 'geohash6': 'VARCHAR'})`,
-    );
-    rmSync(tmp, { force: true });
+  for (const stmt of GEOHASH_MACROS.split(";")
+    .map((x) => x.trim())
+    .filter(Boolean))
+    await db.exec(stmt);
+  for (const t of ["property", "permit", "business"]) {
+    await db.exec(`update ${t} set geohash6 = geohash6(lat, lon)`);
   }
-  for (const t of tables) {
-    await db.exec(
-      `update ${t} x set geohash6 = c.geohash6 from geohash_cache c where c.lat = x.lat and c.lon = x.lon`,
-    );
-  }
-  log.info({ step: "geohash", new_coords: missing.length, ms: Date.now() - t0 }, "transform step");
+  log.info({ step: "geohash", ms: Date.now() - t0 }, "transform step");
 }
 
 async function exportParquet(

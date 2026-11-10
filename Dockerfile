@@ -15,6 +15,7 @@ WORKDIR /app
 COPY --from=build /app ./
 ARG GIT_COMMIT=unknown
 ENV GIT_COMMIT=$GIT_COMMIT
+RUN printf '{"commit":"%s","builtAt":"%s"}\n' "$GIT_COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > build.json
 VOLUME ["/app/data"]
 EXPOSE 8080
 # web app (apps/web) replaces this command once it exists; pipeline service overrides it.

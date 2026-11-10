@@ -70,7 +70,7 @@ as a volume and read `.env` via `env_file`. The `web` command is a placeholder u
 
 - Fetch: page files and `_done.json` make re-runs no-ops.
 - Stage: `staged_batch` prevents double-loading; upserts are keyed by `(source_system,
-  source_record_key)`.
+source_record_key)`.
 - Transform: tables are rebuilt from the same raw rows, so a rerun without new data yields
   `inserted = updated = 0` for every table and keeps each row's original `ingested_at` /
   `run_id` (verified in `apps/pipeline/src/pipeline.test.ts`).

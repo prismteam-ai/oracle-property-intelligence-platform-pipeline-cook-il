@@ -10,7 +10,7 @@ import { finishRun, startRun } from "./run.js";
 import { canonicalize } from "./socrata.js";
 import { findSource } from "./sources.js";
 import { readWatermark, stageAll } from "./stage.js";
-import { transform } from "./transform.js";
+import { GEOHASH_MACROS, transform } from "./transform.js";
 
 const log = pino({ level: "silent" });
 const AS_OF = "2026-11-10";
@@ -433,6 +433,27 @@ describe("stage + transform (integration)", () => {
     ))!;
     expect(p1["roof_age_anchor_date"]).toBe("2024-09-01");
     expect(p1["run_id"]).toBe("run3");
+  });
+
+  it("computes geohash6 in SQL exactly like the TS reference", async () => {
+    for (const stmt of GEOHASH_MACROS.split(";")
+      .map((x) => x.trim())
+      .filter(Boolean))
+      await db.exec(stmt);
+    const pts = Array.from({ length: 300 }, (_, i) => ({
+      lat: 41.4 + (((i * 7919) % 1000) / 1000) * 0.8,
+      lon: -88.3 + (((i * 104729) % 1000) / 1000) * 0.9,
+    }));
+    pts.push(
+      { lat: 90, lon: 180 },
+      { lat: -90, lon: -180 },
+      { lat: 0, lon: 0 },
+      { lat: 42.6, lon: -5.6 },
+    );
+    for (const { lat, lon } of pts) {
+      expect(await db.scalar(`select geohash6(${lat}, ${lon})`)).toBe(geohash6(lat, lon));
+    }
+    expect(await db.scalar("select geohash6(null, 1)")).toBeNull();
   });
 
   it("records a run row with counts, deltas and limitations", async () => {

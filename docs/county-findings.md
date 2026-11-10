@@ -17,20 +17,20 @@ county whose data is published through open-data portals rather than scraped por
 
 See `docs/sources.md` for dataset ids, counts, fields and speed. Summary:
 
-| Need | Source | Mode |
-|---|---|---|
-| Parcels + coordinates | Assessor Parcel Universe (Current Year) `pabr-t5kh` | bulk API |
-| Year built / roof construction | Residential Characteristics `x54s-btds` (year=2026) | bulk API |
-| Situs + mailing/owner name | Parcel Addresses `3723-97qp` (year=2026) | bulk API |
-| Sales / ownership change | Parcel Sales `wvhk-k5uv` | bulk API |
-| Permits (countywide) | Assessor Permits `6yjf-dfxs` | bulk API |
-| Permits (Chicago, with contractors) | Chicago Building Permits `ydr8-5enu` | bulk API |
-| Business records | Chicago Business Licenses `r5kz-chrr` | bulk API |
-| Roofing contractors | IDFPR licenses `pzzh-kp68` | bulk API |
-| Deeds / mortgages / liens | Cook County Clerk Recordings | portal only, no bulk — not loaded |
-| Tax payments | Cook County Treasurer | portal only — not loaded |
-| Chicago trade licenses | chicago.gov HTML search | not bulk — not loaded |
-| BBB ratings | bbb.org | not harvested yet |
+| Need                                | Source                                              | Mode                              |
+| ----------------------------------- | --------------------------------------------------- | --------------------------------- |
+| Parcels + coordinates               | Assessor Parcel Universe (Current Year) `pabr-t5kh` | bulk API                          |
+| Year built / roof construction      | Residential Characteristics `x54s-btds` (year=2026) | bulk API                          |
+| Situs + mailing/owner name          | Parcel Addresses `3723-97qp` (year=2026)            | bulk API                          |
+| Sales / ownership change            | Parcel Sales `wvhk-k5uv`                            | bulk API                          |
+| Permits (countywide)                | Assessor Permits `6yjf-dfxs`                        | bulk API                          |
+| Permits (Chicago, with contractors) | Chicago Building Permits `ydr8-5enu`                | bulk API                          |
+| Business records                    | Chicago Business Licenses `r5kz-chrr`               | bulk API                          |
+| Roofing contractors                 | IDFPR licenses `pzzh-kp68`                          | bulk API                          |
+| Deeds / mortgages / liens           | Cook County Clerk Recordings                        | portal only, no bulk — not loaded |
+| Tax payments                        | Cook County Treasurer                               | portal only — not loaded          |
+| Chicago trade licenses              | chicago.gov HTML search                             | not bulk — not loaded             |
+| BBB ratings                         | bbb.org                                             | not harvested yet                 |
 
 ## 3. Permit jurisdictions
 
