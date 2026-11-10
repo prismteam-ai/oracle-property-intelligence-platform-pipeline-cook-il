@@ -43,6 +43,18 @@ export function newerParquetRun(
   return newest && newest.mtime > dbMtime ? { runId: newest.runId, dir: newest.dir } : null;
 }
 
+/**
+ * Sandbox a connection: no file system / network access from SQL (read_csv('/etc/passwd'), read_text, glob,
+ * httpfs...), except the parquet run directory when the dataset is served from it. lock_configuration makes the
+ * sandbox immutable for the rest of the connection; the SQL guard is only a second line.
+ */
+export async function lockdown(conn: DuckDBConnection, allowedDir?: string): Promise<void> {
+  await conn.run("SET TimeZone = 'UTC'");
+  if (allowedDir) await conn.run(`SET allowed_directories = ['${allowedDir.replace(/'/g, "''")}']`);
+  await conn.run("SET enable_external_access = false");
+  await conn.run("SET lock_configuration = true");
+}
+
 export async function openDataset(dbPath: string, datasetDir: string): Promise<Dataset> {
   const parquet = newerParquetRun(dbPath, datasetDir);
   // One instance per query, closed right after: DuckDB holds a file lock for the lifetime of an
@@ -72,6 +84,7 @@ export async function openDataset(dbPath: string, datasetDir: string): Promise<D
       const conn: DuckDBConnection = await instance.connect();
       let timer: NodeJS.Timeout | undefined;
       try {
+        await lockdown(conn, parquet?.dir);
         const run = conn.runAndReadAll(sql, params).then((r) => r.getRowObjectsJson() as Row[]);
         const timeout = new Promise<never>((_, reject) => {
           timer = setTimeout(() => {

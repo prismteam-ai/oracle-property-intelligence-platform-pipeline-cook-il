@@ -4,7 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { trpcServer } from "@hono/trpc-server";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import type { AppContext } from "./context.js";
 import { appRouter } from "./api/router.js";
 import { handleMcpRequest } from "./mcp/server.js";
@@ -30,9 +30,20 @@ export function rateLimiter(max: number, windowMs: number) {
   };
 }
 
+/** Constant-time string compare (length leak only). */
+export function safeEqual(a: string, b: string): boolean {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+const clientIp = (c: { req: { header(name: string): string | undefined } }): string =>
+  c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? "local";
+
 export function createApp(ctx: AppContext, opts: { uiDir: string; build: BuildInfo }): Hono {
   const app = new Hono();
   const agentLimit = rateLimiter(30, 60_000);
+  const queryLimit = rateLimiter(60, 60_000); // shared by the SQL console and /mcp
 
   app.use("*", async (c, next) => {
     const id = c.req.header("x-request-id") ?? randomUUID();
@@ -63,14 +74,10 @@ export function createApp(ctx: AppContext, opts: { uiDir: string; build: BuildIn
   app.get("/build.json", (c) => c.json(opts.build));
 
   app.use("/trpc/*", async (c, next) => {
-    if (c.req.path.includes("agent.ask")) {
-      const ip =
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-        c.req.header("x-real-ip") ??
-        "local";
-      if (!agentLimit(ip))
-        return c.json({ error: "rate limit: 30 requests per minute per IP" }, 429);
-    }
+    if (c.req.path.includes("agent.ask") && !agentLimit(clientIp(c)))
+      return c.json({ error: "rate limit: 30 requests per minute per IP" }, 429);
+    if (c.req.path.includes("query.sql") && !queryLimit(clientIp(c)))
+      return c.json({ error: "rate limit: 60 requests per minute per IP" }, 429);
     await next();
   });
   app.use(
@@ -96,11 +103,13 @@ export function createApp(ctx: AppContext, opts: { uiDir: string; build: BuildIn
     const token = ctx.env.MCP_HTTP_AUTH_TOKEN;
     if (!token) return c.json({ error: "MCP disabled: MCP_HTTP_AUTH_TOKEN not configured" }, 503);
     const auth = c.req.header("authorization") ?? "";
-    if (auth !== `Bearer ${token}`)
+    if (!safeEqual(auth, `Bearer ${token}`))
       return c.json(
         { error: "unauthorized: send Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>" },
         401,
       );
+    if (!queryLimit(clientIp(c)))
+      return c.json({ error: "rate limit: 60 requests per minute per IP" }, 429);
     return handleMcpRequest(ctx, c.req.raw);
   });
 

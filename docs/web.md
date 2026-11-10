@@ -152,7 +152,13 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
 
 - Fixture data is synthetic; the fixture banner and `FIXTURE DATA` limitations disappear as soon as the real
   `data/cook_il.duckdb` or a Parquet run directory exists.
-- Rate limiting and the geocode cache are in-process (single instance behind Caddy).
+- Rate limiting and the geocode cache are in-process (single instance behind Caddy): `agent.ask` 30/min/IP,
+  `query.sql` and `/mcp` 60/min/IP (shared counter).
+- SQL sandbox: every DuckDB connection the web opens runs `SET enable_external_access = false` (plus
+  `allowed_directories` for the Parquet run directory when served from Parquet) and `SET lock_configuration = true`
+  (`lockdown` in `apps/web/src/db/duck.ts`), so `read_csv('/etc/passwd')`, `read_text`, `glob`, `httpfs` and friends
+  fail even through a bare SELECT that the keyword guard (`apps/web/src/db/sqlguard.ts`) lets through. The MCP bearer
+  compare is constant-time (`crypto.timingSafeEqual`).
 - Agent answers are bounded to 15 rows per tool call to keep the model context small; the UI and MCP expose up to 500.
 - The UI bundle includes MapLibre (~1.4 MB minified, 400 kB gzip); no code splitting yet.
 - Public gateway verification: both the pipeline host and GitHub Actions get HTTP 429 from `ipfs.io` and

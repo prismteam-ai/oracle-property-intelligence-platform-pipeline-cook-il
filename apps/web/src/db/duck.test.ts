@@ -1,5 +1,5 @@
 import { DuckDBInstance } from "@duckdb/node-api";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -20,6 +20,35 @@ beforeAll(async () => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("openDataset", () => {
+  it("rejects host file reads from SQL, even through a bare SELECT the guard allows", async () => {
+    const ds = await openDataset(dbPath, join(dir, "dataset"));
+    for (const sql of [
+      "SELECT * FROM read_csv('/etc/passwd')",
+      "SELECT * FROM read_text('/proc/self/environ')",
+      "SELECT * FROM glob('/**')",
+      "SELECT * FROM read_parquet('/etc/*.parquet')",
+    ])
+      await expect(ds.query(sql), sql).rejects.toThrow(/external access|disabled/i);
+    await expect(ds.query("SET enable_external_access = true")).rejects.toThrow(/locked/i);
+    expect(await ds.query("select count(*)::integer as n from property")).toEqual([{ n: 2 }]);
+  });
+
+  it("parquet views still read their own run directory inside the sandbox", async () => {
+    const run = join(dir, "dataset", "r9");
+    mkdirSync(join(run, "property"), { recursive: true });
+    const w = await DuckDBInstance.create(dbPath);
+    const c = await w.connect();
+    await c.run(`COPY property TO '${join(run, "property", "data_0.parquet")}' (FORMAT parquet)`);
+    c.closeSync();
+    w.closeSync();
+    const ds = await openDataset(dbPath, join(dir, "dataset"));
+    expect(ds.origin.kind).toBe("parquet");
+    expect(await ds.query("select count(*)::integer as n from property")).toEqual([{ n: 2 }]);
+    await expect(ds.query("SELECT * FROM read_csv('/etc/passwd')")).rejects.toThrow(
+      /external access|disabled|allowed/i,
+    );
+    rmSync(run, { recursive: true, force: true });
+  });
   it("opens a fresh read-only instance per query and closes it afterwards", async () => {
     const ds = await openDataset(dbPath, join(dir, "dataset"));
     const closed: DuckDBInstance[] = [];

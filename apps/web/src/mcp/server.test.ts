@@ -6,7 +6,7 @@ import { makeFixture } from "../../../../fixtures/make-fixture.js";
 import { openDataset, type Dataset } from "../db/duck.js";
 import { createContext } from "../context.js";
 import { loadEnv } from "../env.js";
-import { createApp, rateLimiter } from "../server.js";
+import { createApp, rateLimiter, safeEqual } from "../server.js";
 import { MCP_TOOLS } from "./server.js";
 import {
   FindPropertiesOutput,
@@ -148,6 +148,32 @@ describe("http basics", () => {
       body: JSON.stringify({ sql: "DROP TABLE property" }),
     });
     expect(res.status).toBe(400);
+  });
+  it("query.sql and /mcp share a 60/min limit per client IP", async () => {
+    const ip = { "x-forwarded-for": "203.0.113.9" };
+    const sql = () =>
+      app.request("/trpc/query.sql", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...ip },
+        body: JSON.stringify({ sql: "SELECT 1" }),
+      });
+    const mcp = () =>
+      app.request("/mcp", {
+        method: "POST",
+        headers: { ...headers, ...ip },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      });
+    for (let i = 0; i < 30; i++) expect((await sql()).status).toBe(200);
+    for (let i = 0; i < 30; i++) expect((await mcp()).status).toBe(200);
+    expect((await sql()).status).toBe(429);
+    expect((await mcp()).status).toBe(429);
+    expect((await app.request("/health")).status).toBe(200);
+  });
+  it("safeEqual compares in constant time and rejects length mismatches", () => {
+    expect(safeEqual("Bearer abc", "Bearer abc")).toBe(true);
+    expect(safeEqual("Bearer abc", "Bearer abd")).toBe(false);
+    expect(safeEqual("Bearer ab", "Bearer abc")).toBe(false);
+    expect(safeEqual("", "")).toBe(true);
   });
   it("rate limiter allows max hits per window", () => {
     const allow = rateLimiter(3, 1000);
