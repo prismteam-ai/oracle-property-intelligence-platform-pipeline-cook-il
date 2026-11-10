@@ -96,8 +96,8 @@ export function createMcpServer(ctx: AppContext): McpServer {
     "findProperties",
     {
       description:
-        "Properties within radiusMiles of lat/lon (geohash prefilter + haversine) with their permits and contractor/BBB data (contractor.bbb_state: stale = archived copy dated bbb_checked_at, unavailable = bbb_reason, unknown = not checked). Filters: minRoofAge, openRoofingPermitsOnly, minOpenDays.",
-      inputSchema: FindPropertiesInput.shape,
+        "Properties within radiusMiles of lat/lon (geohash prefilter + haversine) with their permits and contractor/BBB data (contractor.bbb_state: stale = archived copy dated bbb_checked_at, unavailable = bbb_reason, unknown = not checked). Filters (same predicate as the Explore UI): minRoofAge (alias minRoofAgeYears; rows with unknown roof age are excluded), openRoofingPermitsOnly, minOpenDays. total_in_radius counts after all filters.",
+      inputSchema: FindPropertiesInput, // full strict object, not .shape: unknown keys are errors
       outputSchema: FindPropertiesOutput.shape,
     },
     async (input) =>

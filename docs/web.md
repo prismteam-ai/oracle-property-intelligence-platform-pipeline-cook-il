@@ -99,7 +99,13 @@ Auth: `Authorization: Bearer <MCP_HTTP_AUTH_TOKEN>`; 401 otherwise. Contracts (Z
 | `getSchema`      | `{}`                                                                                  | `{tables: [{name, columns: [{name, type}]}], source}`                                 |
 | `queryDataset`   | `{sql, limit?≤1000}`                                                                  | `{columns, rows, rowCount, truncated, source}` — one SELECT/WITH only                 |
 | `findProperties` | `{lat, lon, radiusMiles, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?}` | `{properties: [property + permits: [permit + contractor?]], total_in_radius, source}` |
-| `getProperty`    | `{pin14}`                                                                             | `{property \| null, source}`                                                          |
+
+`findProperties` applies exactly the predicate of the Explore UI / `search.properties` (one function,
+`findProperties` in `apps/web/src/search/properties.ts`): `minRoofAge` (alias `minRoofAgeYears`; both mean "roof at
+least this many years old" and exclude rows whose roof age is unknown), `openRoofingPermitsOnly`, `minOpenDays`.
+`total_in_radius` counts after all filters. The input is strict: an unknown key (e.g. a misspelt filter) is a tool
+error, never a silently ignored filter.
+| `getProperty` | `{pin14}` | `{property \| null, source}` |
 
 ```bash
 H=(-H "Authorization: Bearer $MCP_HTTP_AUTH_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream")

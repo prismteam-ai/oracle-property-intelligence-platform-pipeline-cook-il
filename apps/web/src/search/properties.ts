@@ -75,9 +75,11 @@ export async function findProperties(
   const radius = radiusWhere(input.lat, input.lon, input.radiusMiles);
   const where: string[] = [`lat IS NOT NULL AND lon IS NOT NULL AND ${radius.sql}`];
   const params: (string | number)[] = [...radius.params];
-  if (input.minRoofAge !== undefined) {
+  const minRoofAge = input.minRoofAge ?? input.minRoofAgeYears;
+  if (minRoofAge !== undefined) {
+    // `>=` is false for NULL, so unknown roof ages drop out whenever a threshold is given
     where.push(`roof_age_years >= ? AND ${VALID_ANCHOR_SQL}`);
-    params.push(input.minRoofAge);
+    params.push(minRoofAge);
   }
   const openPermitSql = `SELECT max(open_days) FROM permit x WHERE x.pin14 = property.pin14 AND x.is_roofing AND x.status_is_open${
     input.minOpenDays !== undefined ? ` AND x.open_days >= ${Math.floor(input.minOpenDays)}` : ""

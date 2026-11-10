@@ -112,6 +112,22 @@ describe("MCP server over HTTP", () => {
   it("findProperties validates input", async () => {
     await expect(call("findProperties", { lat: 100, lon: 0, radiusMiles: 1 })).rejects.toThrow();
   });
+  it("findProperties applies the roof-age filter under both names and rejects unknown filters", async () => {
+    const q = { lat: 42.0451, lon: -87.6877, radiusMiles: 2, limit: 500 };
+    const all = FindPropertiesOutput.parse(await call("findProperties", q));
+    const a = FindPropertiesOutput.parse(await call("findProperties", { ...q, minRoofAge: 40 }));
+    const b = FindPropertiesOutput.parse(
+      await call("findProperties", { ...q, minRoofAgeYears: 40 }),
+    );
+    expect(a.total_in_radius).toBeGreaterThan(0);
+    expect(a.total_in_radius).toBeLessThan(all.total_in_radius);
+    expect(a.total_in_radius).toBe(a.properties.length);
+    for (const p of a.properties) expect(p.roof_age_years).toBeGreaterThanOrEqual(40);
+    expect(b.properties.map((p) => p.pin14)).toEqual(a.properties.map((p) => p.pin14));
+    await expect(call("findProperties", { ...q, minRoofAgeYrs: 40 })).rejects.toThrow(
+      /minRoofAgeYrs/,
+    );
+  });
 });
 
 describe("http basics", () => {

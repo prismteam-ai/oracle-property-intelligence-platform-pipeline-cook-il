@@ -2,6 +2,7 @@ import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DuckDBInstance } from "@duckdb/node-api";
 import { makeFixture } from "../../../../fixtures/make-fixture.js";
 import { openDataset, type Dataset } from "../db/duck.js";
 import { findProperties, getProperty, tableSchema } from "./properties.js";
@@ -77,6 +78,35 @@ describe("findProperties", () => {
       ),
     );
     expect([...maxOpen].sort((a, b) => b - a)).toEqual(maxOpen);
+  });
+  it("excludes unknown roof ages when a threshold is given, honors the minRoofAgeYears alias, counts after filters", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cook-il-nullroof-"));
+    const db = join(dir, "cook_il.duckdb");
+    await makeFixture(db, join(dir, "publications"));
+    const w = await DuckDBInstance.create(db);
+    const c = await w.connect();
+    await c.run("UPDATE property SET roof_age_years = NULL WHERE hash(pin14) % 3 = 0");
+    c.closeSync();
+    w.closeSync();
+    const nds = await openDataset(db, join(dir, "dataset"));
+    try {
+      const q = { ...EVANSTON, radiusMiles: 2, limit: 500 };
+      const all = await findProperties(nds, q);
+      expect(all.properties.some((p) => p.roof_age_years === null)).toBe(true);
+      const aged = await findProperties(nds, { ...q, minRoofAge: 15 });
+      expect(aged.properties.length).toBeGreaterThan(0);
+      expect(aged.total_in_radius).toBe(aged.properties.length);
+      expect(aged.total_in_radius).toBeLessThan(all.total_in_radius);
+      for (const p of aged.properties) expect(p.roof_age_years).toBeGreaterThanOrEqual(15);
+      const alias = await findProperties(nds, { ...q, minRoofAgeYears: 15 });
+      expect(alias.total_in_radius).toBe(aged.total_in_radius);
+      expect(alias.properties.map((p) => p.pin14)).toEqual(aged.properties.map((p) => p.pin14));
+      await expect(
+        findProperties(nds, { ...q, minRoofAgeYrs: 15 } as unknown as typeof q),
+      ).rejects.toThrow(/minRoofAgeYrs/);
+    } finally {
+      await nds.close();
+    }
   });
   it("getProperty returns permits with contractor and BBB fields", async () => {
     const [row] = await ds.query(

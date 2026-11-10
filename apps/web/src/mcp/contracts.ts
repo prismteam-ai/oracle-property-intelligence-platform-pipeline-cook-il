@@ -50,23 +50,36 @@ export const QueryDatasetOutput = z.object({
   source: SourceSchema,
 });
 
-export const FindPropertiesInput = z.object({
-  lat: z.number().min(-90).max(90),
-  lon: z.number().min(-180).max(180),
-  radiusMiles: z.number().positive().max(50),
-  minRoofAge: z.number().min(0).optional().describe("Only roofs at least this many years old"),
-  openRoofingPermitsOnly: z
-    .boolean()
-    .optional()
-    .describe("Only properties with an open roofing permit"),
-  minOpenDays: z
-    .number()
-    .int()
-    .min(0)
-    .optional()
-    .describe("With openRoofingPermitsOnly: permit open at least this many days"),
-  limit: z.number().int().min(1).max(500).default(50),
-});
+/**
+ * One predicate for UI (tRPC search.properties), agent tools and MCP findProperties. Strict: an unknown key such as a
+ * misspelt filter is an error, never a silently ignored filter.
+ */
+export const FindPropertiesInput = z
+  .object({
+    lat: z.number().min(-90).max(90),
+    lon: z.number().min(-180).max(180),
+    radiusMiles: z.number().positive().max(50),
+    minRoofAge: z
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        "Only roofs at least this many years old (rows with unknown roof age are excluded)",
+      ),
+    minRoofAgeYears: z.number().min(0).optional().describe("Alias of minRoofAge"),
+    openRoofingPermitsOnly: z
+      .boolean()
+      .optional()
+      .describe("Only properties with an open roofing permit"),
+    minOpenDays: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("With openRoofingPermitsOnly: permit open at least this many days"),
+    limit: z.number().int().min(1).max(500).default(50),
+  })
+  .strict();
 export type FindPropertiesInput = z.infer<typeof FindPropertiesInput>;
 
 export const PermitWithContractor = PermitSchema.extend({
