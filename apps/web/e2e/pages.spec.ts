@@ -81,7 +81,9 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
   await page.getByTestId("open-only").check();
   await page.getByTestId("min-open-years").fill("3");
   await page.getByTestId("search").click();
-  await expect(page.getByTestId("search-meta")).toContainText("properties within 2 mi");
+  await expect(page.getByTestId("search-meta")).toContainText(
+    /Showing \d+ of \d+ properties within 2 mi/,
+  );
   const results = page.getByTestId("result");
   expect(await results.count()).toBeGreaterThan(0);
   const first = results.first();
@@ -89,6 +91,7 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
   await expect(first).toContainText("basis");
   await expect(first).toContainText("ROOFING permit");
   await expect(first).toContainText("open_days");
+  await expect(first).toContainText(/BBB (n\/a|[A-F][+-]?)/);
   await expect(first).toContainText("provenance: fixture");
   await expect(first.locator('a[href^="https://"]').first()).toBeVisible();
 });
@@ -144,7 +147,7 @@ const INTERACT: Record<string, (page: Page) => Promise<void>> = {
   "/explore": async (page) => {
     await page.getByTestId("open-only").check();
     await page.getByTestId("search").click();
-    await expect(page.getByTestId("search-meta")).toContainText("properties within");
+    await expect(page.getByTestId("search-meta")).toContainText("Showing");
   },
   "/agent": async (page) => {
     await page.getByTestId("agent-example").first().click();

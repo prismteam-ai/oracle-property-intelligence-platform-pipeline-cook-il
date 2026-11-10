@@ -66,7 +66,8 @@ Endpoints: `GET /health` -> `{ok, runId, rootCid, dataset, commit}`, `GET /build
 Every number and source URL is rendered as text; key elements carry `data-testid`. Layout works at 390 / 768 / 1440 px:
 tables sit in `overflow-x: auto` wrappers, CID / gateway links break anywhere, `#map` and tables inside chat answers
 are capped at 100 % width; the responsive e2e asserts `scrollWidth <= innerWidth` on every page after load and after
-its main interaction.
+its main interaction. Explore reports "Showing n of N" (N = all properties in the radius) and `BBB n/a (...)` when no
+rating is known.
 
 ## tRPC API (`/trpc`, `AppRouter` in `apps/web/src/api/router.ts`)
 
