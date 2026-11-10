@@ -14,6 +14,8 @@ export default tseslint.config(
       "**/.turbo/**",
       "**/playwright-report/**",
       "**/test-results/**",
+      "**/cdk.out/**",
+      "infra/cdk/test/fixtures/**",
     ],
   },
   js.configs.recommended,

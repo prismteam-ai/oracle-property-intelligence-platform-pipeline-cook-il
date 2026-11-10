@@ -6,3 +6,5 @@ pnpm-lock.yaml
 README.md
 playwright-report
 test-results
+cdk.out
+infra/cdk/test/fixtures
