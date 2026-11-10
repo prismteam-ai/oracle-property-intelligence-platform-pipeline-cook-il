@@ -18,7 +18,7 @@ export const appRouter = t.router({
         ctx.info(),
         tableCounts(ctx.ds),
         coverage(ctx.ds),
-        listRuns(ctx.ds),
+        listRuns(ctx.ds, ctx.pubDirs),
       ]);
       const previous = runs.find((r) => r.run_id === info.run.previous_run_id) ?? runs[1] ?? null;
       return {
@@ -31,7 +31,7 @@ export const appRouter = t.router({
         run_count: runs.length,
       };
     }),
-    list: p.query(({ ctx }) => listRuns(ctx.ds)),
+    list: p.query(({ ctx }) => listRuns(ctx.ds, ctx.pubDirs)),
     get: p.input(z.object({ run_id: z.string() })).query(async ({ ctx, input }) => {
       const run = await getRun(ctx.ds, input.run_id);
       if (!run) throw new TRPCError({ code: "NOT_FOUND" });
@@ -47,8 +47,8 @@ export const appRouter = t.router({
         run,
         publication: pub,
         root_cid: rootCid,
-        // sha256 of the committed manifest.json, recorded on the run row by `pipeline publish`
-        manifest_cid: run?.manifest_cid ?? null,
+        // sha256 of the committed manifest.json (run row, run.json sidecar, or computed here)
+        manifest_cid: run?.manifest_cid ?? pub.manifest_cid,
         gateway_urls: rootCid ? gatewayUrls(rootCid) : [],
         objects: (pub.manifest?.objects ?? []).map((o) => ({
           ...o,

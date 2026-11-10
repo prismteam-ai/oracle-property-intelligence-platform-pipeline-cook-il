@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import type { AppContext } from "../context.js";
 import { agentTools } from "./tools.js";
+import type { Source } from "../mcp/contracts.js";
 
 export const SYSTEM_PROMPT = `You are the Cook County, IL property-intelligence agent for a roofing CRM. You answer ONLY from the dataset tools.
 Rules:
@@ -14,7 +15,7 @@ Rules:
 export interface AgentAnswer {
   answer: string;
   steps: { tool: string; args: unknown }[];
-  source: { runId: string; rootCid: string | null; manifestCid: string | null; syncedAt: string };
+  source: Source;
   model: string;
 }
 

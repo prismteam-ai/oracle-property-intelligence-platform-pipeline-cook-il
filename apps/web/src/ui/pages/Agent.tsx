@@ -64,7 +64,8 @@ export function Agent() {
                 model {m.answer.model} · tools:{" "}
                 {m.answer.steps.map((s) => `${s.tool}(${JSON.stringify(s.args)})`).join(" → ") ||
                   "none"}{" "}
-                · dataset run {m.answer.source.runId} · root CID {m.answer.source.rootCid ?? "—"}
+                · dataset run {m.answer.source.runId} · root CID {m.answer.source.rootCid ?? "—"} ·
+                manifest CID {m.answer.source.manifestCid ?? "—"}
               </div>
             </div>
           ),

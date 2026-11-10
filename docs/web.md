@@ -38,7 +38,12 @@ Dataset resolution at startup:
    `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook/web fixture [db] [publications dir]` regenerates it.
 
 Publications are read from `<PUBLICATIONS_DIR>/<run_id>/`, then the committed repo `publications/<run_id>/`, then
-the fixture dir (first `manifest.json` wins). Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
+the fixture dir (first `manifest.json` wins). A run row without `root_cid` / `manifest_cid` (for example when
+`publish` ran against another copy of the DuckDB file) takes them from `publications/<run_id>/manifest.json` and the
+`run.json` sidecar; `manifest_cid` is the sha256 of `manifest.json` and is computed when no sidecar exists. The
+provenance block (`source`) names the **newest published run at or before the current run** (`previous_run_id` chain,
+then lexically older publication dirs) as `publishedRunId`, so an unpublished latest run still carries the last
+published root CID on the run summary, `/runs`, SQL and Explore meta lines, the agent footer and every MCP `source`. Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
 manifest `{schema, run_id, created_at, root_cid, car, previous_run_id, previous_root_cid, ipns, objects, pins,
 origins}` and every `verification*.json` in the dir (`verification.json` from the pipeline host,
 `verification-github-actions.json` from CI). The CAR file is optional.
@@ -62,17 +67,17 @@ Every number and source URL is rendered as text; key elements carry `data-testid
 
 ## tRPC API (`/trpc`, `AppRouter` in `apps/web/src/api/router.ts`)
 
-| Procedure                   | Input                                                                                        | Output                                                                                                                               |
-| --------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `runs.latest` (query)       | –                                                                                            | `{run, source, previous, table_counts, coverage, dataset_origin, run_count}`                                                         |
-| `runs.list` (query)         | –                                                                                            | `Run[]`                                                                                                                              |
-| `runs.get` (query)          | `{run_id}`                                                                                   | `Run`                                                                                                                                |
-| `publications.get` (query)  | `{run_id}`                                                                                   | `{run, publication: {manifest, manifest_raw, verification, files, dir}, root_cid, manifest_cid, gateway_urls, artifacts[+gateways]}` |
-| `query.sql` (mutation)      | `{sql, limit?≤1000}`                                                                         | `{columns, rows, rowCount, truncated, ms, source}` (400 on forbidden SQL)                                                            |
-| `query.schema` (query)      | –                                                                                            | `[{name, columns: [{name, type}]}]`                                                                                                  |
-| `search.properties` (query) | `{lat, lon, radiusMiles≤50, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?≤500}` | `{properties: [property + distance_miles + permits: [permit + contractor]], total_in_radius, source}`                                |
-| `property.get` (query)      | `{pin14}`                                                                                    | `{property \| null, source}`                                                                                                         |
-| `agent.ask` (mutation)      | `{question}`                                                                                 | `{answer, steps: [{tool, args}], source, model}` (30 req/min/IP)                                                                     |
+| Procedure                   | Input                                                                                        | Output                                                                                                                                |
+| --------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `runs.latest` (query)       | –                                                                                            | `{run, source: {runId, rootCid, manifestCid, publishedRunId, syncedAt}, previous, table_counts, coverage, dataset_origin, run_count}` |
+| `runs.list` (query)         | –                                                                                            | `Run[]`                                                                                                                               |
+| `runs.get` (query)          | `{run_id}`                                                                                   | `Run`                                                                                                                                 |
+| `publications.get` (query)  | `{run_id}`                                                                                   | `{run, publication: {manifest, manifest_raw, verification, files, dir}, root_cid, manifest_cid, gateway_urls, artifacts[+gateways]}`  |
+| `query.sql` (mutation)      | `{sql, limit?≤1000}`                                                                         | `{columns, rows, rowCount, truncated, ms, source}` (400 on forbidden SQL)                                                             |
+| `query.schema` (query)      | –                                                                                            | `[{name, columns: [{name, type}]}]`                                                                                                   |
+| `search.properties` (query) | `{lat, lon, radiusMiles≤50, minRoofAge?, openRoofingPermitsOnly?, minOpenDays?, limit?≤500}` | `{properties: [property + distance_miles + permits: [permit + contractor]], total_in_radius, source}`                                 |
+| `property.get` (query)      | `{pin14}`                                                                                    | `{property \| null, source}`                                                                                                          |
+| `agent.ask` (mutation)      | `{question}`                                                                                 | `{answer, steps: [{tool, args}], source, model}` (30 req/min/IP)                                                                      |
 
 Radius search: geohash prefix prefilter (precision chosen from the radius, centre + 8 neighbours) then exact haversine in
 SQL; ordered by distance, or by longest-open roofing permit when `openRoofingPermitsOnly` is set.

@@ -189,7 +189,7 @@ export function Explore() {
             <p data-testid="search-meta">
               {res.total_in_radius} properties within {radius} mi of ({pin.lat}, {pin.lon}); showing{" "}
               {res.properties.length}. Snapshot run {res.source.runId}, root CID{" "}
-              {res.source.rootCid ?? "—"}.
+              {res.source.rootCid ?? "—"}, manifest CID {res.source.manifestCid ?? "—"}.
             </p>
           )}
           <div data-testid="results">

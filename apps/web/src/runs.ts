@@ -29,9 +29,9 @@ export function rowToRun(row: Row): Run {
   });
 }
 
-export async function listRuns(ds: Dataset): Promise<Run[]> {
+export async function listRuns(ds: Dataset, pubDirs: string[] = []): Promise<Run[]> {
   const rows = await ds.query("SELECT * FROM run ORDER BY started_at DESC");
-  return rows.map(rowToRun);
+  return rows.map((r) => withPublication(rowToRun(r), pubDirs));
 }
 
 export async function getRun(ds: Dataset, runId: string): Promise<Run | null> {
@@ -120,8 +120,60 @@ export async function coverage(ds: Dataset): Promise<Coverage> {
   };
 }
 
-import { getPublication } from "./publications.js";
+import { getPublication, publishedRunIds } from "./publications.js";
 import type { Source } from "./mcp/contracts.js";
+
+/** CIDs of a run: the run row first, else its publication files (manifest.json + run.json). */
+export function withPublication(run: Run, pubDirs: string[]): Run {
+  if (run.root_cid && run.manifest_cid) return run;
+  const pub = getPublication(pubDirs, run.run_id);
+  if (!pub.manifest) return run;
+  return {
+    ...run,
+    root_cid: run.root_cid ?? pub.manifest.root_cid,
+    manifest_cid: run.manifest_cid ?? pub.manifest_cid,
+    previous_run_id: run.previous_run_id ?? pub.manifest.previous_run_id,
+  };
+}
+
+/**
+ * Newest *published* run at or before `run`: walk previous_run_id, then fall back to the
+ * publication dirs (run ids are UTC timestamps, so lexical order is time order).
+ */
+export async function newestPublished(
+  ds: Dataset,
+  pubDirs: string[],
+  run: Run,
+): Promise<Run | null> {
+  const seen = new Set<string>();
+  for (let cur: Run | null = run; cur && !seen.has(cur.run_id);) {
+    seen.add(cur.run_id);
+    const r = withPublication(cur, pubDirs);
+    if (r.root_cid) return r;
+    cur = cur.previous_run_id ? await getRun(ds, cur.previous_run_id) : null;
+  }
+  const id = publishedRunIds(pubDirs).find((p) => p <= run.run_id);
+  if (!id) return null;
+  const row = await getRun(ds, id);
+  const pub = getPublication(pubDirs, id);
+  return row
+    ? withPublication(row, pubDirs)
+    : {
+        run_id: id,
+        started_at: pub.manifest?.created_at ?? "",
+        finished_at: pub.manifest?.created_at ?? null,
+        status: "ok",
+        mode: "full",
+        sources: [],
+        counts: {},
+        deltas: {},
+        dead_letters: [],
+        limitations: [],
+        root_cid: pub.manifest?.root_cid ?? null,
+        manifest_cid: pub.manifest_cid,
+        previous_run_id: pub.manifest?.previous_run_id ?? null,
+      };
+}
 
 export interface DatasetInfo {
   run: Run;
@@ -132,13 +184,14 @@ export interface DatasetInfo {
 export async function datasetInfo(ds: Dataset, pubDirs: string[]): Promise<DatasetInfo> {
   const run = await latestRun(ds);
   if (!run) throw new Error("dataset has no run rows");
-  const pub = getPublication(pubDirs, run.run_id);
+  const published = await newestPublished(ds, pubDirs, run);
   return {
-    run,
+    run: withPublication(run, pubDirs),
     source: {
       runId: run.run_id,
-      rootCid: run.root_cid ?? pub.manifest?.root_cid ?? null,
-      manifestCid: run.manifest_cid,
+      rootCid: published?.root_cid ?? null,
+      manifestCid: published?.manifest_cid ?? null,
+      publishedRunId: published?.run_id ?? null,
       syncedAt: run.finished_at ?? run.started_at,
     },
   };

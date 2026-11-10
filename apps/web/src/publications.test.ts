@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GATEWAYS, gatewayUrls, getPublication } from "./publications.js";
+import { GATEWAYS, gatewayUrls, getPublication, manifestSha256 } from "./publications.js";
 
 const manifest = {
   schema: "cook-il.artifact-manifest.v1",
@@ -52,7 +52,7 @@ describe("publications", () => {
     const urls = gatewayUrls("bafyabc", "property/part-0.parquet");
     expect(GATEWAYS).toHaveLength(6);
     expect(urls).toHaveLength(6);
-    expect(urls[0]).toEqual({
+    expect(urls[0]).toMatchObject({
       gateway: "https://ipfs.io",
       url: "https://ipfs.io/ipfs/bafyabc/property/part-0.parquet",
     });
@@ -69,6 +69,7 @@ describe("publications", () => {
     );
     const pub = getPublication(["/nonexistent", base], "r1");
     expect(pub.manifest?.objects[1]?.cid).toBe("bafyx");
+    expect(pub.manifest_cid).toBe(manifestSha256(JSON.stringify(manifest)));
     expect(pub.manifest?.pins[0]?.provider).toBe("pinata");
     expect(pub.verifications.map((v) => [v.file, v.data.verifier])).toEqual([
       ["verification-github-actions.json", "github-actions"],

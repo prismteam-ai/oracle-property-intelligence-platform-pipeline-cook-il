@@ -54,8 +54,19 @@ export function RunSummary() {
         items={[
           ["run_id", run.run_id],
           ["previous_run_id", run.previous_run_id ?? "—"],
-          ["root CID", run.root_cid ?? "—"],
-          ["manifest CID", run.manifest_cid ?? "—"],
+          [
+            "root CID",
+            <span data-testid="root-cid">
+              {source.rootCid ?? "not published yet"}
+              {source.publishedRunId && source.publishedRunId !== run.run_id
+                ? ` (newest published run ${source.publishedRunId}; this run is not published yet)`
+                : ""}
+            </span>,
+          ],
+          [
+            "manifest CID",
+            source.manifestCid ? `${source.manifestCid} (sha256 of manifest.json)` : "—",
+          ],
           ["synced at", source.syncedAt],
           [
             "served from",
@@ -65,7 +76,9 @@ export function RunSummary() {
           ],
           [
             "publication",
-            <Link to={`/publications/${run.run_id}`}>artifact manifest for {run.run_id}</Link>,
+            <Link to={`/publications/${source.publishedRunId ?? run.run_id}`}>
+              artifact manifest for {source.publishedRunId ?? run.run_id}
+            </Link>,
           ],
         ]}
       />
