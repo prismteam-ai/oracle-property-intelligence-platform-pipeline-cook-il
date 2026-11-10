@@ -31,6 +31,18 @@ export interface RunContext {
 
 export async function startRun(c: RunContext): Promise<void> {
   await ensureRunSchema(c.db);
+  // a run left 'running' by a killed process is closed out as failed so history stays honest
+  const interrupted: DeadLetter = {
+    source_system: "*",
+    stage: "transform",
+    key: null,
+    error: "interrupted: process exited before finishing",
+    at: new Date().toISOString(),
+  };
+  await c.db.exec(
+    "update run set status = 'failed', finished_at = now(), dead_letters = ?::json where status = 'running'",
+    [JSON.stringify([interrupted])],
+  );
   const prev = await c.db.one<{ run_id: string }>(
     "select run_id from run order by started_at desc limit 1",
   );

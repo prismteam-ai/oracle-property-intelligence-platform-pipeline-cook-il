@@ -85,6 +85,15 @@ dead_letters JSON, limitations JSON, manifest_cid, root_cid, previous_run_id)`.
 `deltas` holds `{inserted, updated, unchanged}` per contract table. `dead_letter` keeps one
 row per failed page/step. `manifest_cid` / `root_cid` are filled by the IPFS publish step.
 
+## Measured full run (2026-11-10, this machine)
+
+- fetch: 10.4M rows / 5.8 GB NDJSON in 8 min (4 in flight per host); 0 failed pages.
+- stage: 53 s for all eight sources.
+- transform: ~35 s end to end (property 11 s, permit 8 s, parquet 10 s); rerun yields zero deltas.
+- outputs: `data/cook_il.duckdb` 3.1 GB, Parquet snapshot 655 MB per run (26 files, largest 55 MB).
+- A run row left `running` by a killed process is marked `failed` with an `interrupted` dead letter
+  by the next run.
+
 ## Dead letters
 
 Fetch failures never abort a run: the page is recorded, the batch stays incomplete, the run

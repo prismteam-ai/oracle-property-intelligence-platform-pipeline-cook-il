@@ -471,6 +471,10 @@ describe("stage + transform (integration)", () => {
     expect(run.previous_run_id).toBeNull();
     expect(run.counts["permit"]).toBe(7);
     expect(run.limitations.length).toBeGreaterThan(3);
+    await startRun({ ...ctx, runId: "run5" });
+    expect(await db.scalar("select status from run where run_id = 'run4'")).toBe("ok");
+    await startRun({ ...ctx, runId: "run6" });
+    expect(await db.scalar("select status from run where run_id = 'run5'")).toBe("failed");
     const row = (await db.one("select status, mode, counts from run where run_id = 'run4'"))!;
     expect(row["status"]).toBe("ok");
     expect(row["mode"]).toBe("incremental");
