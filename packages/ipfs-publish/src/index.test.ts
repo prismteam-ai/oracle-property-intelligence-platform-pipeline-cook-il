@@ -68,3 +68,23 @@ describe("Manifest schema", () => {
     expect(() => Manifest.parse({ schema: "cook-il.artifact-manifest.v1", run_id: "x" })).toThrow();
   });
 });
+
+describe("verify early stop", () => {
+  it("skips the rest of a gateway after three consecutive failures", async () => {
+    const dir = await fixture();
+    const dag = await buildDag(dir);
+    const objects = [...dag.objects, ...dag.objects, ...dag.objects, ...dag.objects].filter(
+      (o) => o.codec === "file",
+    );
+    const v = await verify({
+      runId: "r1",
+      rootCid: dag.rootCid,
+      objects,
+      gateways: ["http://127.0.0.1:9/ipfs/"],
+      verifier: "test",
+      timeoutMs: 300,
+      retries: 0,
+    });
+    expect(v.checks.filter((c) => c.error?.startsWith("skipped")).length).toBe(objects.length - 3);
+  }, 20_000);
+});

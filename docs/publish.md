@@ -45,3 +45,7 @@ on demand, commits the record). The web app renders the manifest, pins and every
 
 Limitations: IPNS is not used (`ipns: null`); `origins` is empty (no self-hosted node advertises the CID); the
 manifest itself is not pinned, hence the sha256 stand-in for `manifest_cid`.
+
+## Verifier defaults
+
+30 s per fetch, one retry with back-off, and an early stop per gateway after three consecutive rate-limit/timeout failures (recorded as `skipped` checks). The first publications ran with 90 s and two retries, which is why they took 45–50 min against the rate-limited `ipfs.io`/`dweb.link`.

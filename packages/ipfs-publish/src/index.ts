@@ -246,16 +246,34 @@ export async function verify(opts: {
   const gateways = opts.gateways ?? DEFAULT_GATEWAYS;
   const checks: z.infer<typeof GatewayCheck>[] = [];
   const files = opts.objects.filter((o) => o.codec === "file");
+  const retries = opts.retries ?? 1;
+  const timeoutMs = opts.timeoutMs ?? 30_000;
   for (const gw of gateways) {
+    // After three consecutive rate-limit/timeout failures on one gateway, record the rest as skipped.
+    let consecutiveFailures = 0;
     for (const o of files) {
       const url = `${gw}${opts.rootCid}/${o.name}`;
       let last: z.infer<typeof GatewayCheck> | undefined;
-      for (let attempt = 0; attempt <= (opts.retries ?? 2); attempt++) {
+      if (consecutiveFailures >= 3) {
+        checks.push({
+          gateway: gw,
+          name: o.name,
+          cid: o.cid,
+          status: 0,
+          size_match: false,
+          digest_match: false,
+          ms: 0,
+          fetched_at: new Date().toISOString(),
+          error: "skipped: gateway rate-limited or unreachable on 3 consecutive objects",
+        });
+        continue;
+      }
+      for (let attempt = 0; attempt <= retries; attempt++) {
         const t0 = Date.now();
         try {
           const r = await fetch(url, {
             headers: { "user-agent": "cook-il-pipeline-verify/1.0" },
-            signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
+            signal: AbortSignal.timeout(timeoutMs),
           });
           const buf = new Uint8Array(await r.arrayBuffer());
           last = {
@@ -282,10 +300,13 @@ export async function verify(opts: {
             error: String(e).slice(0, 120),
           };
         }
-        if (attempt < (opts.retries ?? 2))
-          await new Promise((res) => setTimeout(res, 5_000 * (attempt + 1)));
+        if (attempt < retries) await new Promise((res) => setTimeout(res, 5_000 * (attempt + 1)));
       }
-      if (last) checks.push(last);
+      if (last) {
+        checks.push(last);
+        const rateLimited = last.status === 429 || last.status === 0 || last.status >= 500;
+        consecutiveFailures = rateLimited ? consecutiveFailures + 1 : 0;
+      }
     }
   }
   const summary: Record<string, { ok: number; total: number }> = {};
