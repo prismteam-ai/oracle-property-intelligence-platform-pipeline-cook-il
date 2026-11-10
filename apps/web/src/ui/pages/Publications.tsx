@@ -4,7 +4,7 @@ import { fmt, trpc, useAsync } from "../trpc.js";
 
 /** Gateways run by the pinning providers we upload to; the rest are independent third parties. */
 const PINNING = ["https://gateway.pinata.cloud", "https://ipfs.filebase.io"];
-const kind = (gateway: string) =>
+export const gatewayKind = (gateway: string) =>
   PINNING.some((g) => gateway.startsWith(g)) ? "pinning provider" : "independent";
 
 const okClass = (v: boolean) => (v ? "ok" : "bad");
@@ -12,13 +12,17 @@ const okClass = (v: boolean) => (v ? "ok" : "bad");
 export function Publications() {
   const { runId } = useParams();
   const runs = useAsync(() => trpc.runs.list.query(), "runs");
-  const latest = runs.data?.[0]?.run_id;
-  const id = runId ?? latest;
+  const latest = useAsync(() => trpc.runs.latest.query(), "latest");
+  const latestId = latest.data?.run.run_id;
+  // default to the newest *published* run (runs.latest resolves it) rather than an unpublished latest run
+  const publishedId = latest.data?.source.publishedRunId ?? latestId;
+  const id = runId ?? publishedId;
   const q = useAsync(
     () => (id ? trpc.publications.get.query({ run_id: id }) : Promise.resolve(null)),
     `pub:${id ?? ""}`,
   );
-  if (!runs.data) return <Status loading={runs.loading} error={runs.error} />;
+  if (!runs.data || !latest.data)
+    return <Status loading={runs.loading || latest.loading} error={runs.error ?? latest.error} />;
   const chain = runs.data.map((r) => r.run_id);
   const d = q.data;
   const m = d?.publication.manifest ?? null;
@@ -40,6 +44,11 @@ export function Publications() {
           </span>
         ))}
       </p>
+      {!runId && latestId && publishedId !== latestId && (
+        <p className="muted" data-testid="pub-unpublished-note">
+          latest run {latestId} is not published yet; showing newest published run {publishedId}
+        </p>
+      )}
       <Status loading={q.loading} error={q.error} />
       {d && (
         <>
@@ -162,7 +171,7 @@ export function Publications() {
                 rows={Object.entries(v.summary).map(([gateway, s]) => ({ gateway, ...s }))}
                 columns={[
                   { key: "gateway" },
-                  { key: "kind", render: (r) => kind(r.gateway) },
+                  { key: "kind", render: (r) => gatewayKind(r.gateway) },
                   {
                     key: "ok",
                     label: "objects verified (size + sha256)",
