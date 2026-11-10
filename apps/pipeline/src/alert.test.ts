@@ -41,7 +41,7 @@ describe("signalRun", () => {
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("http://hook");
     expect(init.method).toBe("POST");
-    expect(JSON.parse(String(init.body))).toEqual({
+    expect(JSON.parse(init.body as string)).toEqual({
       run_id: "r1",
       status: "ok",
       counts: { property: 5 },
