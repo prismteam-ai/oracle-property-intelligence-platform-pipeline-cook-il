@@ -6,7 +6,26 @@ import { fmt, fmtDate, invalidDate, trpc } from "../trpc.js";
 import { bbbLabel } from "../../bbb.js";
 
 type Result = Awaited<ReturnType<typeof trpc.search.properties.query>>;
+type Sort = "distance" | "roof_age" | "open_days";
 const CHICAGO = { lat: 41.8781, lon: -87.6298 };
+
+const maxOpenDays = (p: Result["properties"][number]): number =>
+  Math.max(
+    0,
+    ...p.permits.filter((x) => x.is_roofing && x.status_is_open).map((x) => x.open_days ?? 0),
+  );
+/** ponytail: sorts the returned page (≤100 rows) client-side; the server orders by distance / open days. */
+export function sortResults(rows: Result["properties"], sort: Sort): Result["properties"] {
+  const by: Record<
+    Sort,
+    (a: Result["properties"][number], b: Result["properties"][number]) => number
+  > = {
+    distance: (a, b) => (a.distance_miles ?? Infinity) - (b.distance_miles ?? Infinity),
+    roof_age: (a, b) => (b.roof_age_years ?? -1) - (a.roof_age_years ?? -1),
+    open_days: (a, b) => maxOpenDays(b) - maxOpenDays(a),
+  };
+  return [...rows].sort(by[sort]);
+}
 
 export function Explore() {
   const mapEl = useRef<HTMLDivElement>(null);
@@ -17,6 +36,8 @@ export function Explore() {
   const [minRoofAge, setMinRoofAge] = useState<number | "">(15);
   const [openOnly, setOpenOnly] = useState(false);
   const [minOpenYears, setMinOpenYears] = useState<number | "">("");
+  const [sortChoice, setSortChoice] = useState<Sort | null>(null);
+  const sort: Sort = sortChoice ?? (minRoofAge === "" ? "distance" : "roof_age");
   const [res, setRes] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,6 +81,13 @@ export function Explore() {
       .setLngLat([CHICAGO.lon, CHICAGO.lat])
       .addTo(m);
   }, []);
+
+  /** Typed coordinates: move the pin and recenter the map on it (map clicks already show the point). */
+  const typePin = (next: { lat: number; lon: number }) => {
+    setPin(next);
+    if (Number.isFinite(next.lat) && Number.isFinite(next.lon))
+      map.current?.easeTo({ center: [next.lon, next.lat] });
+  };
 
   useEffect(() => {
     marker.current?.setLngLat([pin.lon, pin.lat]);
@@ -118,7 +146,7 @@ export function Explore() {
             type="number"
             step="0.0001"
             value={pin.lat}
-            onChange={(e) => setPin({ ...pin, lat: Number(e.target.value) })}
+            onChange={(e) => typePin({ ...pin, lat: Number(e.target.value) })}
             data-testid="lat"
           />
         </label>
@@ -128,7 +156,7 @@ export function Explore() {
             type="number"
             step="0.0001"
             value={pin.lon}
-            onChange={(e) => setPin({ ...pin, lon: Number(e.target.value) })}
+            onChange={(e) => typePin({ ...pin, lon: Number(e.target.value) })}
             data-testid="lon"
           />
         </label>
@@ -174,6 +202,18 @@ export function Explore() {
             data-testid="min-open-years"
           />
         </label>
+        <label className="f">
+          sort results
+          <select
+            value={sort}
+            onChange={(e) => setSortChoice(e.target.value as Sort)}
+            data-testid="sort"
+          >
+            <option value="distance">distance</option>
+            <option value="roof_age">roof age desc</option>
+            <option value="open_days">open days desc</option>
+          </select>
+        </label>
         <button className="primary" onClick={search} disabled={busy} data-testid="search">
           {busy ? "Searching…" : "Search"}
         </button>
@@ -194,56 +234,57 @@ export function Explore() {
             </p>
           )}
           <div data-testid="results">
-            {res?.properties.map((p) => (
-              <div className="result" key={p.pin14} data-testid="result">
-                <div className="title">
-                  PIN {p.pin14} · {p.address}, {p.city} {p.zip} · {fmt(p.distance_miles)} mi
+            {res &&
+              sortResults(res.properties, sort).map((p) => (
+                <div className="result" key={p.pin14} data-testid="result">
+                  <div className="title">
+                    PIN {p.pin14} · {p.address}, {p.city} {p.zip} · {fmt(p.distance_miles)} mi
+                  </div>
+                  <div>
+                    coordinates {p.lat}, {p.lon} · year built {fmt(p.year_built)} · roof age{" "}
+                    {invalidDate(p.roof_age_anchor_date) ? (
+                      <b className="bad" data-testid="invalid-anchor">
+                        unknown
+                      </b>
+                    ) : (
+                      <b>{fmt(p.roof_age_years)} y</b>
+                    )}{" "}
+                    (basis {p.roof_age_basis ?? "—"}, confidence {p.roof_age_confidence ?? "—"},
+                    anchor {fmtDate(p.roof_age_anchor_date)})
+                  </div>
+                  <div>
+                    owner {p.owner_name ?? "—"} · mail {p.mail_city ?? "—"}, {p.mail_state ?? "—"} ·
+                    out of area: {fmt(p.is_out_of_area)} · last sale {fmt(p.last_sale_date)} (
+                    {fmt(p.years_since_sale)} y ago)
+                  </div>
+                  <div className="muted">
+                    provenance: {p.source_system} · ingested {p.ingested_at} · run {p.run_id} ·{" "}
+                    <ExtLink href={p.source_url} />
+                  </div>
+                  {p.permits.length > 0 && (
+                    <ul className="plain">
+                      {p.permits.map((x) => (
+                        <li key={x.permit_id}>
+                          {x.is_roofing ? "ROOFING " : ""}permit {x.permit_id} · {x.status} (
+                          {x.status_is_open ? "open" : "closed"}) · issued {fmtDate(x.issued_at)} ·
+                          open_days {fmt(x.open_days)} · contractor {x.contractor_name ?? "—"}
+                          {x.contractor
+                            ? ` · license ${x.contractor.license_number ?? "—"}`
+                            : ""} · {bbbLabel(x.contractor)}
+                          {" · "}
+                          <ExtLink href={x.source_url}>source</ExtLink>
+                          {x.contractor?.bbb_url ? (
+                            <>
+                              {" "}
+                              · <ExtLink href={x.contractor.bbb_url}>BBB profile</ExtLink>
+                            </>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                <div>
-                  coordinates {p.lat}, {p.lon} · year built {fmt(p.year_built)} · roof age{" "}
-                  {invalidDate(p.roof_age_anchor_date) ? (
-                    <b className="bad" data-testid="invalid-anchor">
-                      unknown
-                    </b>
-                  ) : (
-                    <b>{fmt(p.roof_age_years)} y</b>
-                  )}{" "}
-                  (basis {p.roof_age_basis ?? "—"}, confidence {p.roof_age_confidence ?? "—"},
-                  anchor {fmtDate(p.roof_age_anchor_date)})
-                </div>
-                <div>
-                  owner {p.owner_name ?? "—"} · mail {p.mail_city ?? "—"}, {p.mail_state ?? "—"} ·
-                  out of area: {fmt(p.is_out_of_area)} · last sale {fmt(p.last_sale_date)} (
-                  {fmt(p.years_since_sale)} y ago)
-                </div>
-                <div className="muted">
-                  provenance: {p.source_system} · ingested {p.ingested_at} · run {p.run_id} ·{" "}
-                  <ExtLink href={p.source_url} />
-                </div>
-                {p.permits.length > 0 && (
-                  <ul className="plain">
-                    {p.permits.map((x) => (
-                      <li key={x.permit_id}>
-                        {x.is_roofing ? "ROOFING " : ""}permit {x.permit_id} · {x.status} (
-                        {x.status_is_open ? "open" : "closed"}) · issued {fmtDate(x.issued_at)} ·
-                        open_days {fmt(x.open_days)} · contractor {x.contractor_name ?? "—"}
-                        {x.contractor
-                          ? ` · license ${x.contractor.license_number ?? "—"}`
-                          : ""} · {bbbLabel(x.contractor)}
-                        {" · "}
-                        <ExtLink href={x.source_url}>source</ExtLink>
-                        {x.contractor?.bbb_url ? (
-                          <>
-                            {" "}
-                            · <ExtLink href={x.contractor.bbb_url}>BBB profile</ExtLink>
-                          </>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
+              ))}
           </div>
         </div>
       </div>

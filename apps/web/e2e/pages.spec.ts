@@ -102,6 +102,39 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
   );
   await expect(first).toContainText("provenance: fixture");
   await expect(first.locator('a[href^="https://"]').first()).toBeVisible();
+  // roof-age threshold set -> default sort is roof age desc; switching to distance reorders by distance asc
+  await expect(page.getByTestId("sort")).toHaveValue("roof_age");
+  const ages = (await results.locator("b").allTextContents())
+    .map(parseFloat)
+    .filter(Number.isFinite);
+  expect(ages.length).toBeGreaterThan(1);
+  expect([...ages].sort((a, b) => b - a)).toEqual(ages);
+  await page.getByTestId("sort").selectOption("distance");
+  const miles = (await results.locator(".title").allTextContents()).map((t) =>
+    parseFloat(/([\d.]+) mi/.exec(t)?.[1] ?? "NaN"),
+  );
+  expect([...miles].sort((a, b) => a - b)).toEqual(miles);
+});
+
+test("explore recenters the map on typed coordinates", async ({ page }) => {
+  await page.goto("/explore");
+  await expect(page.locator(".maplibregl-marker")).toBeVisible();
+  await page.getByTestId("lat").fill("42.0451");
+  await page.getByTestId("lon").fill("-87.6877");
+  // the pin marker sits on the typed point; after easeTo it must be at the map's centre
+  await expect
+    .poll(async () => {
+      const [m, c] = await Promise.all([
+        page.locator(".maplibregl-marker").boundingBox(),
+        page.getByTestId("map").boundingBox(),
+      ]);
+      if (!m || !c) return Infinity;
+      return Math.hypot(
+        m.x + m.width / 2 - (c.x + c.width / 2),
+        m.y + m.height - (c.y + c.height / 2),
+      );
+    })
+    .toBeLessThan(8);
 });
 
 test("agent page shows example prompts and a disabled-agent answer without a key", async ({
