@@ -3,6 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 import { ExtLink } from "../components.js";
 import { fmt, fmtDate, invalidDate, trpc } from "../trpc.js";
+import { bbbLabel } from "../../bbb.js";
 
 type Result = Awaited<ReturnType<typeof trpc.search.properties.query>>;
 const CHICAGO = { lat: 41.8781, lon: -87.6298 };
@@ -227,8 +228,8 @@ export function Explore() {
                         {x.status_is_open ? "open" : "closed"}) · issued {fmtDate(x.issued_at)} ·
                         open_days {fmt(x.open_days)} · contractor {x.contractor_name ?? "—"}
                         {x.contractor
-                          ? ` · license ${x.contractor.license_number ?? "—"} · BBB ${x.contractor.bbb_rating ?? `n/a (${x.contractor.bbb_state})`}`
-                          : " · BBB n/a (no contractor match)"}
+                          ? ` · license ${x.contractor.license_number ?? "—"}`
+                          : ""} · {bbbLabel(x.contractor)}
                         {" · "}
                         <ExtLink href={x.source_url}>source</ExtLink>
                         {x.contractor?.bbb_url ? (

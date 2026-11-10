@@ -5,6 +5,7 @@ import { guardSql } from "../db/sqlguard.js";
 import { findProperties } from "../search/properties.js";
 import type { PropertyWithPermits } from "../mcp/contracts.js";
 import { geocodePlace } from "./geocode.js";
+import { bbbLabel } from "../bbb.js";
 
 /** Trim a property to what the model needs to cite (pin14, permit ids, source URLs). */
 export function compact(p: PropertyWithPermits) {
@@ -33,6 +34,7 @@ export function compact(p: PropertyWithPermits) {
         open_days: x.open_days,
         work_description: x.work_description,
         contractor_name: x.contractor_name,
+        bbb: bbbLabel(x.contractor),
         bbb_rating: x.contractor?.bbb_rating ?? null,
         bbb_state: x.contractor?.bbb_state ?? "unknown",
         bbb_url: x.contractor?.bbb_url ?? null,

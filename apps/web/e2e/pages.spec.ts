@@ -91,7 +91,9 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
   await expect(first).toContainText("basis");
   await expect(first).toContainText("ROOFING permit");
   await expect(first).toContainText("open_days");
-  await expect(first).toContainText(/BBB (n\/a|[A-F][+-]?)/);
+  await expect(first).toContainText(
+    /BBB(: (not available|unknown) \(| [A-F][+-]? ?(\(archived copy, )?)/,
+  );
   await expect(first).toContainText("provenance: fixture");
   await expect(first.locator('a[href^="https://"]').first()).toBeVisible();
 });

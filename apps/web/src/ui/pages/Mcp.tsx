@@ -60,6 +60,11 @@ export function Mcp() {
         rows={TOOLS}
         columns={[{ key: "name" }, { key: "input", wrap: true }, { key: "output", wrap: true }]}
       />
+      <p className="muted" data-testid="mcp-bbb-note">
+        BBB wording for <code>contractor</code> rows: <code>bbb_state=stale</code> → "BBB A+
+        (archived copy, &lt;bbb_checked_at date&gt;)", <code>unavailable</code> → "BBB: not
+        available (&lt;bbb_reason&gt;)", <code>unknown</code> → "BBB: unknown (not checked)".
+      </p>
       <h2>Example calls (curl)</h2>
       <pre>{init}</pre>
       <pre>{list}</pre>
