@@ -14,8 +14,9 @@ import { stageAll } from "./stage.js";
 import { transform } from "./transform.js";
 import { serve } from "./serve.js";
 import { latestPublishedRun, publish, verifyPublished } from "./publish.js";
+import { harvestBbb } from "./enrich/bbb.js";
 
-const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify> [options]
+const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify|bbb> [options]
   --incremental       use per-source watermarks (fetch/run)
   --sample <n>        fetch only the first n rows per source into batch 'sample' (fetch/run)
   --source <system>   restrict to one source (repeatable)
@@ -24,7 +25,9 @@ const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify
   --run <run_id>      run to publish / verify (verify: default latest under publications/)
   --previous <run_id> previous run for the CID chain (publish; default: the run's previous_run_id)
   --verifier <name>   who verifies, e.g. pipeline-host or github-actions (default pipeline-host)
-  --publications <d>  committed manifest dir (default ./publications)`;
+  --publications <d>  committed manifest dir (default ./publications)
+  --limit <n>         bbb: contractors to look up, most permit links first (default 150)
+  --min-permits <m>   bbb: minimum permit links per contractor (default 1)`;
 
 const summary = (x: FetchResult) => ({
   source: x.source_system,
@@ -48,6 +51,8 @@ async function main(): Promise<void> {
       previous: { type: "string" },
       verifier: { type: "string", default: "pipeline-host" },
       publications: { type: "string", default: "publications" },
+      limit: { type: "string", default: "150" },
+      "min-permits": { type: "string", default: "1" },
       help: { type: "boolean", short: "h", default: false },
     },
   });
@@ -177,6 +182,13 @@ async function main(): Promise<void> {
           dead_letters: run.dead_letters.length,
         }),
       );
+    } else if (cmd === "bbb") {
+      const r = await harvestBbb(db, {
+        limit: Number(values.limit),
+        minPermits: Number(values["min-permits"]),
+        log: runLog,
+      });
+      console.log(JSON.stringify(r));
     } else if (cmd === "serve") {
       serve(db, env.PORT, readBuildInfo(process.cwd()));
       await new Promise(() => undefined);
