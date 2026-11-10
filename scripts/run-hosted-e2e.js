@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import process from "node:process";
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";

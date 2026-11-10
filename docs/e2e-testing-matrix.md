@@ -5,7 +5,7 @@ The suite tests the public deployment and real published Parquet data. It never 
 ## Run
 
 ```sh
-EXPECTED_SHA=<reviewed-deployed-sha> HOSTED_RUN=<unique-evidence-id> node scripts/run-hosted-e2e.mjs
+EXPECTED_SHA=<reviewed-deployed-sha> HOSTED_RUN=<unique-evidence-id> node scripts/run-hosted-e2e.js
 ```
 
 For the authenticated MCP family, inject `MCP_HTTP_AUTH_TOKEN` into the target process, or set `MCP_ENV_FILE` to the authorized gitignored environment-file path. The launcher forwards only that token. The test uses Node fetch outside Playwright request tracing; it never prints/attaches authorization headers. Without this credential the authenticated case is explicitly BLOCKED/skipped, not N/A or passed.
