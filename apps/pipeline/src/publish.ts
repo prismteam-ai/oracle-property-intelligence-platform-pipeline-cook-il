@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { Duck } from "@cook/duck";
+import { openForWrite } from "./db.js";
+import { log } from "./log.js";
 import { Manifest, publishRun, verify, type Verification } from "@cook/ipfs-publish";
 
 /** Pinning credentials are optional: a provider without them is skipped and recorded in `pins`. */
@@ -69,7 +70,7 @@ export async function publish(o: PublishOpts): Promise<{
   mkdirSync(outDir, { recursive: true });
   mkdirSync(carDir, { recursive: true });
 
-  const db = await Duck.open(join(o.dataDir, "cook_il.duckdb"));
+  const db = await openForWrite(join(o.dataDir, "cook_il.duckdb"), log);
   try {
     const run = await db.one<{ previous_run_id: string | null }>(
       "select previous_run_id from run where run_id = ?",

@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { config as loadDotenv } from "dotenv";
-import { Duck } from "@cook/duck";
+import { openForWrite } from "./db.js";
 import { loadEnv } from "./env.js";
 import { fetchSources, type FetchResult } from "./fetch.js";
 import { log, newRunId } from "./log.js";
@@ -150,7 +150,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  const db = await Duck.open(join(dataDir, "cook_il.duckdb"));
+  const db = await openForWrite(join(dataDir, "cook_il.duckdb"), runLog);
   try {
     const ctx: RunContext = {
       db,
@@ -191,7 +191,9 @@ async function main(): Promise<void> {
         throw e;
       }
     } else if (cmd === "run") {
+      runLog.info({ incremental: values.incremental }, "run started");
       const run = await runAll(ctx);
+      runLog.info({ status: run.status, counts: run.counts, deltas: run.deltas }, "run finished");
       console.log(
         JSON.stringify({
           run_id: run.run_id,

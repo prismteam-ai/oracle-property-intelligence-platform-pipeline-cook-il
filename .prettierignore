@@ -9,3 +9,4 @@ test-results
 cdk.out
 infra/cdk/test/fixtures
 publications/
+.playwright-mcp

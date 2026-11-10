@@ -45,26 +45,30 @@ export function newerParquetRun(
 
 export async function openDataset(dbPath: string, datasetDir: string): Promise<Dataset> {
   const parquet = newerParquetRun(dbPath, datasetDir);
-  const instance = parquet
-    ? await DuckDBInstance.create(":memory:")
-    : await DuckDBInstance.create(dbPath, { access_mode: "READ_ONLY" });
-  const setup = await instance.connect();
-  if (parquet) {
+  // One instance per query, closed right after: DuckDB holds a file lock for the lifetime of an
+  // instance (even READ_ONLY), and the pipeline in the sibling container needs the exclusive
+  // read-write lock on cook_il.duckdb for every run.
+  const open = async (): Promise<DuckDBInstance> => {
+    if (!parquet) return DuckDBInstance.create(dbPath, { access_mode: "READ_ONLY" });
+    const instance = await DuckDBInstance.create(":memory:");
+    const setup = await instance.connect();
     for (const t of TABLES) {
       const dir = join(parquet.dir, t);
       if (!existsSync(dir)) continue;
       const glob = resolve(dir, "*.parquet").replace(/'/g, "''");
       await setup.run(`CREATE VIEW ${t} AS SELECT * FROM read_parquet('${glob}')`);
     }
-    logger.info({ runId: parquet.runId }, "dataset: parquet views");
-  } else {
-    logger.info({ dbPath }, "dataset: duckdb read-only");
-  }
-  setup.closeSync();
+    setup.closeSync();
+    return instance;
+  };
+  (await open()).closeSync(); // fail fast at startup if the dataset cannot be opened
+  if (parquet) logger.info({ runId: parquet.runId }, "dataset: parquet views");
+  else logger.info({ dbPath }, "dataset: duckdb read-only, opened per query");
 
   return {
     origin: parquet ? { kind: "parquet", ...parquet } : { kind: "duckdb", path: dbPath },
     async query(sql, params = [], timeoutMs = 10_000) {
+      const instance = await open();
       const conn: DuckDBConnection = await instance.connect();
       let timer: NodeJS.Timeout | undefined;
       try {
@@ -79,10 +83,10 @@ export async function openDataset(dbPath: string, datasetDir: string): Promise<D
       } finally {
         clearTimeout(timer);
         conn.closeSync();
+        instance.closeSync();
       }
     },
     close() {
-      instance.closeSync();
       return Promise.resolve();
     },
   };

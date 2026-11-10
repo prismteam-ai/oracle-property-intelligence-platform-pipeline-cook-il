@@ -23,11 +23,21 @@ services:
   pipeline:
     image: oracle-cook-il:local
     depends_on: [web]
-    # incremental run every 6h; first run happens at start
+    # Lock contract for data/cook_il.duckdb: DuckDB allows one read-write opener and no other
+    # opener across processes. The web opens the file READ_ONLY per query and closes it right
+    # after (apps/web/src/db/duck.ts); the pipeline opens read-write and retries on the lock
+    # error every 5 s for up to 10 min (apps/pipeline/src/db.ts) before failing the run.
+    # Incremental run every 6h; first run happens at start. The cli logs "run started" /
+    # "run finished" (run_id, counts, deltas) as JSON; the loop adds wall-clock and exit code.
     command:
       - sh
       - -c
-      - "while true; do node apps/pipeline/dist/cli.js run --incremental; sleep 21600; done"
+      - >-
+        while true; do
+        echo "pipeline loop: run --incremental start $(date -u +%FT%TZ)";
+        node apps/pipeline/dist/cli.js run --incremental;
+        echo "pipeline loop: run --incremental end $(date -u +%FT%TZ) exit=$?";
+        sleep 21600; done
     env_file: .env
     environment: { DATA_DIR: /app/data }
     volumes: ["./data:/app/data"]
