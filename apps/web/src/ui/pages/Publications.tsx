@@ -2,6 +2,11 @@ import { Link, useParams } from "react-router-dom";
 import { ExtLink, Kv, Status, Table } from "../components.js";
 import { fmt, trpc, useAsync } from "../trpc.js";
 
+/** Gateways run by the pinning providers we upload to; the rest are independent third parties. */
+const PINNING = ["https://gateway.pinata.cloud", "https://ipfs.filebase.io"];
+const kind = (gateway: string) =>
+  PINNING.some((g) => gateway.startsWith(g)) ? "pinning provider" : "independent";
+
 const okClass = (v: boolean) => (v ? "ok" : "bad");
 
 export function Publications() {
@@ -90,7 +95,7 @@ export function Publications() {
           <ul className="plain" data-testid="gateway-urls">
             {d.gateway_urls.map((g) => (
               <li key={g.gateway}>
-                {g.gateway}: <ExtLink href={g.url} />
+                {g.gateway} <span className="muted">({g.kind})</span>: <ExtLink href={g.url} />
               </li>
             ))}
             {!d.gateway_urls.length && <li className="muted">no root CID recorded</li>}
@@ -130,7 +135,8 @@ export function Publications() {
                 render: (o) =>
                   o.gateways.map((g) => (
                     <div key={g.gateway}>
-                      <ExtLink href={g.url}>{g.gateway}</ExtLink>
+                      <ExtLink href={g.url}>{g.gateway}</ExtLink>{" "}
+                      <span className="muted">({g.kind})</span>
                     </div>
                   )),
               },
@@ -140,7 +146,9 @@ export function Publications() {
           <h2>Gateway verification ({d.publication.verifications.length} record(s))</h2>
           {!d.publication.verifications.length && (
             <p className="muted" data-testid="no-verification">
-              No verification*.json for this run.
+              Verification pending: no verification*.json for this run yet (the pipeline host writes
+              verification.json at publish time, GitHub Actions adds
+              verification-github-actions.json daily).
             </p>
           )}
           {d.publication.verifications.map(({ file, data: v }) => (
@@ -154,6 +162,7 @@ export function Publications() {
                 rows={Object.entries(v.summary).map(([gateway, s]) => ({ gateway, ...s }))}
                 columns={[
                   { key: "gateway" },
+                  { key: "kind", render: (r) => kind(r.gateway) },
                   {
                     key: "ok",
                     label: "objects verified (size + sha256)",

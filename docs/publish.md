@@ -33,12 +33,15 @@ Pinning: Filebase (S3 `PutObject` with `import: car` metadata, `FILEBASE_ACCESS_
 variables are missing is **skipped and recorded** in `pins` with `ok:false, detail:"skipped: ..."`; a CID mismatch is
 recorded the same way. Socrata credentials are not needed for `publish` / `verify`.
 
-Verification fetches every file object from every gateway (`https://ipfs.io`, `dweb.link`, `gateway.pinata.cloud`,
-`gw.ipfs-lens.dev`, `dget.top`, `ipfs.filebase.io`) and compares size and sha256; 3 attempts with backoff on 429 / 5xx.
+Verification fetches every file object from every gateway and compares size and sha256; 3 attempts with backoff on
+429 / 5xx. Default order: independent gateways first (`gw.ipfs-lens.dev`, `dget.top`, `ipfs.io`, `dweb.link`), then
+the pinning providers' own gateways (`gateway.pinata.cloud`, `ipfs.filebase.io`); the web labels each as
+"independent" or "pinning provider". `--gateways a,b,c` (prefixes like `https://ipfs.io/ipfs/`) overrides the list
+for `publish` and `verify`.
 `verify` re-runs this from the committed manifest and writes `verification-<verifier>.json` next to it, so the same
 run can carry records from the pipeline host and from GitHub Actions (`.github/workflows/verify-ipfs.yml`, daily and
 on demand, commits the record). The web app renders the manifest, pins and every `verification*.json` on
-`/publications/<run_id>`; the CAR is optional there (the VM keeps it under `data/publications`).
+`/publications/<run_id>` ("verification pending" when none exists yet); the CAR is optional there (the VM keeps it under `data/publications`).
 
 Limitations: IPNS is not used (`ipns: null`); `origins` is empty (no self-hosted node advertises the CID); the
 manifest itself is not pinned, hence the sha256 stand-in for `manifest_cid`.

@@ -75,12 +75,13 @@ export const Verification = z.object({
 });
 export type Verification = z.infer<typeof Verification>;
 
+/** Independent gateways first, then the gateways of the pinning providers we upload to. */
 export const DEFAULT_GATEWAYS = [
+  "https://gw.ipfs-lens.dev/ipfs/",
+  "https://dget.top/ipfs/",
   "https://ipfs.io/ipfs/",
   "https://dweb.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
-  "https://gw.ipfs-lens.dev/ipfs/",
-  "https://dget.top/ipfs/",
   "https://ipfs.filebase.io/ipfs/",
 ];
 

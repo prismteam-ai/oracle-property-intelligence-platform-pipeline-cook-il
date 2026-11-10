@@ -52,11 +52,24 @@ describe("publications", () => {
     const urls = gatewayUrls("bafyabc", "property/part-0.parquet");
     expect(GATEWAYS).toHaveLength(6);
     expect(urls).toHaveLength(6);
-    expect(urls[0]).toMatchObject({
-      gateway: "https://ipfs.io",
-      url: "https://ipfs.io/ipfs/bafyabc/property/part-0.parquet",
+    expect(urls[0]).toEqual({
+      gateway: "https://gw.ipfs-lens.dev",
+      kind: "independent",
+      url: "https://gw.ipfs-lens.dev/ipfs/bafyabc/property/part-0.parquet",
     });
-    expect(gatewayUrls("bafyabc").map((u) => u.gateway)).toContain("https://ipfs.filebase.io");
+    // independent gateways first, pinning providers' gateways last
+    expect(urls.map((u) => u.kind)).toEqual([
+      "independent",
+      "independent",
+      "independent",
+      "independent",
+      "pinning provider",
+      "pinning provider",
+    ]);
+    expect(urls.slice(4).map((u) => u.gateway)).toEqual([
+      "https://gateway.pinata.cloud",
+      "https://ipfs.filebase.io",
+    ]);
   });
   it("reads manifest + every verification*.json from the first dir that has them; CAR optional", () => {
     const base = mkdtempSync(join(tmpdir(), "pub-"));

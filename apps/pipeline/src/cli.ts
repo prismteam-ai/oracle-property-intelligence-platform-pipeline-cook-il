@@ -25,6 +25,7 @@ const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify
   --run <run_id>      run to publish / verify (verify: default latest under publications/)
   --previous <run_id> previous run for the CID chain (publish; default: the run's previous_run_id)
   --car-url <url>     where the CAR is downloadable, e.g. a GitHub Release asset (publish; manifest car.release_url)
+  --gateways <a,b,c>  gateway prefixes to verify from (publish/verify; default: the six built-in ones)
   --verifier <name>   who verifies, e.g. pipeline-host or github-actions (default pipeline-host)
   --publications <d>  committed manifest dir (default ./publications)
   --limit <n>         bbb: contractors to look up, most permit links first (default 150)
@@ -51,6 +52,7 @@ async function main(): Promise<void> {
       run: { type: "string" },
       previous: { type: "string" },
       "car-url": { type: "string" },
+      gateways: { type: "string" },
       verifier: { type: "string", default: "pipeline-host" },
       publications: { type: "string", default: "publications" },
       limit: { type: "string", default: "150" },
@@ -66,6 +68,14 @@ async function main(): Promise<void> {
   if (cmd === "publish" || cmd === "verify") {
     // no Socrata credentials needed; pin credentials are optional (see publish.ts)
     const publicationsDir = values.publications;
+    const gateways = values.gateways
+      ? {
+          gateways: values.gateways
+            .split(",")
+            .map((g) => g.trim())
+            .filter(Boolean),
+        }
+      : {};
     if (cmd === "publish") {
       if (!values.run) throw new Error("publish needs --run <run_id>");
       const r = await publish({
@@ -75,6 +85,7 @@ async function main(): Promise<void> {
         dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",
         publicationsDir,
         verifier: values.verifier,
+        ...gateways,
       });
       console.log(
         JSON.stringify({
@@ -89,7 +100,12 @@ async function main(): Promise<void> {
     } else {
       const runId = values.run || latestPublishedRun(publicationsDir);
       if (!runId) throw new Error("verify: no --run given and nothing under publications/");
-      const r = await verifyPublished({ runId, publicationsDir, verifier: values.verifier });
+      const r = await verifyPublished({
+        runId,
+        publicationsDir,
+        verifier: values.verifier,
+        ...gateways,
+      });
       console.log(JSON.stringify({ run_id: runId, file: r.file, summary: r.verification.summary }));
     }
     return;
