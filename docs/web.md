@@ -29,21 +29,35 @@ Lint, Prettier and the ESLint type-aware rules are the root ones (`pnpm lint` at
 
 Dataset resolution at startup:
 
-1. If `DATASET_DIR/<run_id>/property/*.parquet` exists and is newer than `DATASET_DB`, the service opens an in-memory
-   DuckDB with views over the newest Parquet run directory.
-2. Otherwise `DATASET_DB` is opened `READ_ONLY`.
-3. If neither exists, a deterministic **fixture** dataset is generated (`fixtures/make-fixture.ts`: 5,000 properties
-   around Chicago / Evanston / Oak Park, 2,000 permits of which 600 roofing and 150 open for more than three years,
-   300 contractors, 500 businesses, 4,221 sales, 3 runs with placeholder CIDs). The run limitations start with
-   `FIXTURE DATA` and the UI shows a banner. `pnpm --filter @cook/web fixture [db] [publications dir]` regenerates it.
+Set `REQUIRE_PUBLISHED_SNAPSHOT=true` on the real deployment to fail closed if a snapshot mount or
+publication is missing. Without it, local fixture/development fallback remains available.
+
+1. With local published datasets, choose the newest run having a manifest and verification record.
+   Stream every manifest file through SHA-256 and check its size before opening the service. Queries use
+   only the manifest-listed Parquet files in an isolated in-memory DuckDB; extra files are ignored.
+   The ingestion database is never opened. Missing metadata or an integrity mismatch fails startup.
+2. Run history comes from the atomic `<DATA_DIR>/run-history.json` metadata export. Every completed
+   ingestion refreshes it; bootstrap existing deployments once with:
+
+   ```bash
+   node apps/pipeline/dist/cli.js export-history --data data
+   ```
+
+   Export with the new image before restarting the web service. On the VM the data argument is `/app/data`.
+   The web retains this history and the selected publication per process. Restart the web after a new
+   publication and metadata export to advance its snapshot. Ingestion can keep writing its own DB meanwhile.
+
+3. Without local published datasets, the local-development/fixture path still supports read-only DuckDB
+   or newer Parquet views. If neither exists, a deterministic **fixture** dataset is generated and visibly
+   labelled `FIXTURE DATA`; it is never evidence of published county data.
 
 Publications are read from `<PUBLICATIONS_DIR>/<run_id>/`, then the committed repo `publications/<run_id>/`, then
 the fixture dir (first `manifest.json` wins). A run row without `root_cid` / `manifest_cid` (for example when
 `publish` ran against another copy of the DuckDB file) takes them from `publications/<run_id>/manifest.json` and the
 `run.json` sidecar; `manifest_cid` is the sha256 of `manifest.json` and is computed when no sidecar exists. The
-provenance block (`source`) names the **newest published run at or before the current run** (`previous_run_id` chain,
-then lexically older publication dirs) as `publishedRunId`, so an unpublished latest run still carries the last
-published root CID on the run summary, `/runs`, SQL and Explore meta lines, the agent footer and every MCP `source`. Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
+provenance block (`source`) names the **actually served published snapshot** as both `runId` and
+`publishedRunId`, with its root CID. A newer ingestion run can appear in the history but cannot silently
+change query data or inherit an older snapshot's CID. Shapes come from `@cook/ipfs-publish` (see `docs/publish.md`):
 manifest `{schema, run_id, created_at, root_cid, car, previous_run_id, previous_root_cid, ipns, objects, pins,
 origins}` and every `verification*.json` in the dir (`verification.json` from the pipeline host,
 `verification-github-actions.json` from CI). The CAR file is optional.

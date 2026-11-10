@@ -5,6 +5,7 @@ const EnvSchema = z.object({
   DATA_DIR: z.string().default("data"),
   DATASET_DB: z.string().optional(),
   DATASET_DIR: z.string().optional(),
+  REQUIRE_PUBLISHED_SNAPSHOT: z.enum(["true", "false"]).optional(),
   PUBLICATIONS_DIR: z.string().optional(),
   GIT_COMMIT: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),

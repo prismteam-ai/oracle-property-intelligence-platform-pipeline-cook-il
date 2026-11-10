@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Duck } from "@cook/duck";
 import type { DeadLetter, Delta, Run, SourceCount } from "@cook/shared";
@@ -8,6 +8,16 @@ import { readWatermark, stageAll, type StageResult } from "./stage.js";
 import type { SocrataAuth } from "./socrata.js";
 import { SOURCES, datasetPageUrl, type Source } from "./sources.js";
 import { LIMITATIONS, transform, type TransformResult } from "./transform.js";
+
+/** Atomic metadata copy for the serving process; no web reads against the ingestion DB. */
+export async function exportRunHistory(db: Duck, dataDir: string): Promise<void> {
+  const rows = await db.query("select * from run order by started_at desc");
+  mkdirSync(dataDir, { recursive: true });
+  const target = join(dataDir, "run-history.json");
+  const temp = `${target}.${process.pid}.tmp`;
+  writeFileSync(temp, JSON.stringify(rows));
+  renameSync(temp, target);
+}
 
 export async function ensureRunSchema(db: Duck): Promise<void> {
   await db.exec(`create table if not exists run(
@@ -124,6 +134,7 @@ export async function finishRun(
     c.runId,
   ]);
   if (!row) throw new Error("run row missing");
+  await exportRunHistory(c.db, c.dataDir);
   return {
     run_id: c.runId,
     started_at: row["started_at"] ?? "",

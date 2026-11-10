@@ -7,7 +7,15 @@ import { openForWrite } from "./db.js";
 import { loadEnv } from "./env.js";
 import { fetchSources, type FetchResult } from "./fetch.js";
 import { log, newRunId } from "./log.js";
-import { fetchStep, finishRun, readBuildInfo, runAll, startRun, type RunContext } from "./run.js";
+import {
+  exportRunHistory,
+  fetchStep,
+  finishRun,
+  readBuildInfo,
+  runAll,
+  startRun,
+  type RunContext,
+} from "./run.js";
 import { countUrl, fetchJson, whereClause } from "./socrata.js";
 import { SOURCES, findSource, sourceUrl } from "./sources.js";
 import { stageAll } from "./stage.js";
@@ -17,7 +25,7 @@ import { latestPublishedRun, publish, verifyPublished } from "./publish.js";
 import { harvestBbb } from "./enrich/bbb.js";
 import { prune } from "./prune.js";
 
-const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify|bbb|prune> [options]
+const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify|bbb|prune|export-history> [options]
   --incremental       use per-source watermarks (fetch/run)
   --sample <n>        fetch only the first n rows per source into batch 'sample' (fetch/run)
   --source <system>   restrict to one source (repeatable)
@@ -71,6 +79,17 @@ async function main(): Promise<void> {
     return;
   }
   const publicationsDir = values.publications ?? process.env["PUBLICATIONS_DIR"] ?? "publications";
+  if (cmd === "export-history") {
+    const dataDir = values.data ?? process.env["DATA_DIR"] ?? "data";
+    const db = await openForWrite(join(dataDir, "cook_il.duckdb"), log);
+    try {
+      await exportRunHistory(db, dataDir);
+    } finally {
+      db.close();
+    }
+    console.log(JSON.stringify({ file: join(dataDir, "run-history.json") }));
+    return;
+  }
   if (cmd === "prune") {
     const r = prune({
       dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",

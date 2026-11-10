@@ -1,6 +1,7 @@
 import { DuckDBInstance, type DuckDBConnection, type DuckDBValue } from "@duckdb/node-api";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { publishedSnapshot } from "./snapshot.js";
 import { logger } from "../logger.js";
 
 export type Row = Record<string, unknown>;
@@ -55,8 +56,17 @@ export async function lockdown(conn: DuckDBConnection, allowedDir?: string): Pro
   await conn.run("SET lock_configuration = true");
 }
 
-export async function openDataset(dbPath: string, datasetDir: string): Promise<Dataset> {
-  const parquet = newerParquetRun(dbPath, datasetDir);
+export async function openDataset(
+  dbPath: string,
+  datasetDir: string,
+  serving?: { pubDirs: string[]; historyPath: string },
+): Promise<Dataset> {
+  const published = serving
+    ? await publishedSnapshot(datasetDir, serving.pubDirs, serving.historyPath)
+    : null;
+  // Production serving with publications must never fall through to the writer's DB.
+  if (serving && !published) throw new Error("no verified published snapshot available locally");
+  const parquet = published ?? newerParquetRun(dbPath, datasetDir);
   // One instance per query, closed right after: DuckDB holds a file lock for the lifetime of an
   // instance (even READ_ONLY), and the pipeline in the sibling container needs the exclusive
   // read-write lock on cook_il.duckdb for every run.
@@ -67,8 +77,44 @@ export async function openDataset(dbPath: string, datasetDir: string): Promise<D
     for (const t of TABLES) {
       const dir = join(parquet.dir, t);
       if (!existsSync(dir)) continue;
-      const glob = resolve(dir, "*.parquet").replace(/'/g, "''");
-      await setup.run(`CREATE VIEW ${t} AS SELECT * FROM read_parquet('${glob}')`);
+      const paths = published
+        ? published.files.filter((f) => f.startsWith(resolve(dir) + "/") && f.endsWith(".parquet"))
+        : [resolve(dir, "*.parquet")];
+      if (!paths.length) continue;
+      const input = paths.map((p) => `'${p.replace(/'/g, "''")}'`).join(", ");
+      await setup.run(`CREATE VIEW ${t} AS SELECT * FROM read_parquet([${input}])`);
+    }
+    if (published) {
+      await setup.run(`CREATE TABLE run(
+        run_id varchar, started_at timestamp, finished_at timestamp, status varchar, mode varchar,
+        sources json, counts json, deltas json, dead_letters json, limitations json,
+        manifest_cid varchar, root_cid varchar, previous_run_id varchar)`);
+      const columns = [
+        "run_id",
+        "started_at",
+        "finished_at",
+        "status",
+        "mode",
+        "sources",
+        "counts",
+        "deltas",
+        "dead_letters",
+        "limitations",
+        "manifest_cid",
+        "root_cid",
+        "previous_run_id",
+      ];
+      for (const row of published.history) {
+        await setup.run(
+          "INSERT INTO run VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          columns.map((key) => {
+            const value = row[key] ?? null;
+            return value !== null && typeof value === "object"
+              ? JSON.stringify(value)
+              : (value as DuckDBValue);
+          }),
+        );
+      }
     }
     setup.closeSync();
     return instance;
@@ -78,7 +124,9 @@ export async function openDataset(dbPath: string, datasetDir: string): Promise<D
   else logger.info({ dbPath }, "dataset: duckdb read-only, opened per query");
 
   return {
-    origin: parquet ? { kind: "parquet", ...parquet } : { kind: "duckdb", path: dbPath },
+    origin: parquet
+      ? { kind: "parquet", runId: parquet.runId, dir: parquet.dir }
+      : { kind: "duckdb", path: dbPath },
     async query(sql, params = [], timeoutMs = 10_000) {
       const instance = await open();
       const conn: DuckDBConnection = await instance.connect();

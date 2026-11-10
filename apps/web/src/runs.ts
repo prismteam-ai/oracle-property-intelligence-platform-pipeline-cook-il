@@ -225,7 +225,8 @@ export interface DatasetInfo {
 
 /** Latest run + the provenance block every API/MCP response carries. Snapshot is immutable per process, so cache it. */
 export async function datasetInfo(ds: Dataset, pubDirs: string[]): Promise<DatasetInfo> {
-  const run = await latestRun(ds);
+  const run =
+    ds.origin.kind === "parquet" ? await getRun(ds, ds.origin.runId) : await latestRun(ds);
   if (!run) throw new Error("dataset has no run rows");
   const published = await newestPublished(ds, pubDirs, run);
   return {

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import type { Hono } from "hono";
 import { loadEnv, type Env } from "./env.js";
+import { publishedRunIds } from "./publications.js";
 import { openDataset, type Dataset } from "./db/duck.js";
 import { createContext } from "./context.js";
 import { createApp } from "./server.js";
@@ -18,7 +19,11 @@ export async function bootstrap(): Promise<{ app: Hono; ds: Dataset; env: Env; m
   const dbPath = resolve(env.DATASET_DB);
   const fixturePubDir = join(dirname(dbPath), "publications");
 
-  if (!existsSync(dbPath) && !existsSync(env.DATASET_DIR)) {
+  if (
+    !existsSync(dbPath) &&
+    !existsSync(env.DATASET_DIR) &&
+    env.REQUIRE_PUBLISHED_SNAPSHOT !== "true"
+  ) {
     logger.warn(
       { dbPath },
       "no dataset found: generating FIXTURE dataset (synthetic, placeholder CIDs)",
@@ -28,14 +33,27 @@ export async function bootstrap(): Promise<{ app: Hono; ds: Dataset; env: Env; m
     logger.info(summary, "fixture generated");
   }
 
-  const ds = await openDataset(dbPath, env.DATASET_DIR);
+  const pubDirs = [resolve(env.PUBLICATIONS_DIR), resolve("publications"), fixturePubDir];
+  const hasPublishedData = publishedRunIds(pubDirs).some((id) =>
+    existsSync(join(env.DATASET_DIR, id, "property")),
+  );
+  const ds = await openDataset(
+    dbPath,
+    env.DATASET_DIR,
+    hasPublishedData || env.REQUIRE_PUBLISHED_SNAPSHOT === "true"
+      ? {
+          pubDirs,
+          historyPath: join(env.DATA_DIR, "run-history.json"),
+        }
+      : undefined,
+  );
   const model = env.OPENAI_API_KEY
     ? createOpenAI({ apiKey: env.OPENAI_API_KEY })("gpt-4.1-mini")
     : null;
   const ctx = createContext({
     ds,
     env,
-    pubDirs: [resolve(env.PUBLICATIONS_DIR), resolve("publications"), fixturePubDir],
+    pubDirs,
     model,
   });
 
