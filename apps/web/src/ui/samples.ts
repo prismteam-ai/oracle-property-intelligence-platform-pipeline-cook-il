@@ -6,7 +6,8 @@ export const SAMPLE_QUERIES: { title: string; sql: string }[] = [
   round(2 * 3958.7613 * asin(sqrt(pow(sin(radians(lat - 42.0451) / 2), 2) + cos(radians(42.0451)) * cos(radians(lat)) * pow(sin(radians(lon + 87.6877) / 2), 2))), 2) AS distance_miles,
   source_url
 FROM property
-WHERE substr(geohash6, 1, 5) IN ('dp3wm', 'dp3wq', 'dp3wj', 'dp3wk', 'dp3wt', 'dp3ws', 'dp3wh', 'dp3wn', 'dp3wp')
+WHERE lat BETWEEN 42.0451 - 0.03 AND 42.0451 + 0.03 -- bounding box (~2 mi) so the index prunes, then exact haversine
+  AND lon BETWEEN -87.6877 - 0.04 AND -87.6877 + 0.04
   AND distance_miles <= 2
 ORDER BY distance_miles
 LIMIT 50`,

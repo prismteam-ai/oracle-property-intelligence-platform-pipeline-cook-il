@@ -6,6 +6,7 @@ import { makeFixture } from "../../../../fixtures/make-fixture.js";
 import { openDataset, type Dataset } from "../db/duck.js";
 import { findProperties, getProperty, tableSchema } from "./properties.js";
 import { haversineMiles } from "./geo.js";
+import { SAMPLE_QUERIES } from "../ui/samples.js";
 
 let ds: Dataset;
 beforeAll(async () => {
@@ -93,5 +94,14 @@ describe("findProperties", () => {
     await expect(
       ds.query("SELECT count(*) FROM range(100000000) a, range(100000) b", [], 300),
     ).rejects.toThrow(/timed out/);
+  });
+});
+
+describe("sample queries", () => {
+  it("every SQL console sample returns rows against the fixture (no hand-typed geohash prefixes)", async () => {
+    for (const s of SAMPLE_QUERIES) {
+      expect(s.sql).not.toMatch(/geohash/);
+      expect((await ds.query(s.sql)).length, s.title).toBeGreaterThan(0);
+    }
   });
 });
