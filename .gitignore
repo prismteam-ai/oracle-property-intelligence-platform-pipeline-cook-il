@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules
+data/
+*.duckdb
+*.duckdb.wal
+*.parquet
+*.car
+dist/
+.turbo/
+coverage/
+
+.playwright-mcp/

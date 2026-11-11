@@ -1,0 +1,30 @@
+{
+  "name": "@cook/ipfs-publish",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1165.0",
+    "@ipld/car": "5.4.7",
+    "blockstore-core": "7.0.1",
+    "ipfs-unixfs-importer": "17.1.1",
+    "multiformats": "14.0.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cook/tsconfig": "workspace:*"
+  }
+}

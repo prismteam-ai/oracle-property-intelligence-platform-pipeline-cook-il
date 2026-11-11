@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": { "soofi-xyz-team-kit@soofi-xyz": true },
+  "extraKnownMarketplaces": {
+    "soofi-xyz": { "source": { "source": "github", "repo": "soofi-xyz/soofi-xyz-team-kit" } }
+  }
+}

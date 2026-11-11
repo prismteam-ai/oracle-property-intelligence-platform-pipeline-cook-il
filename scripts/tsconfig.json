@@ -1,0 +1,4 @@
+{
+  "extends": "../apps/agent-handler/tsconfig.json",
+  "include": ["*.ts"]
+}

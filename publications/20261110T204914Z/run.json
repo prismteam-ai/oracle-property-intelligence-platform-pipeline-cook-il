@@ -1,0 +1,24 @@
+{
+  "run_id": "20261110T204914Z",
+  "root_cid": "bafybeig7vgd7ft5woa6sxgnhwjte4he4b762oi7whwmjnrqqhjcjs2d4oa",
+  "manifest_cid": "bafkreidoknhkbplof7qbhdho43tqj24tdxxjyaexovyosmrgqge5yuekje",
+  "manifest_sha256": "6e534ea0bd6e2fe0138ceee6e704eb931dee9c00977570e932268189dc508a49",
+  "manifest_pins": [
+    {
+      "provider": "filebase",
+      "cid": "bafkreidoknhkbplof7qbhdho43tqj24tdxxjyaexovyosmrgqge5yuekje",
+      "at": "2026-11-11T10:19:04.001Z",
+      "ok": true,
+      "detail": "CAR import, CID matches local manifest CID"
+    },
+    {
+      "provider": "pinata",
+      "cid": "bafkreidoknhkbplof7qbhdho43tqj24tdxxjyaexovyosmrgqge5yuekje",
+      "at": "2026-11-11T10:19:06.879Z",
+      "ok": true,
+      "detail": "file upload, CID matches local manifest CID"
+    }
+  ],
+  "previous_run_id": null,
+  "previous_root_cid": null
+}

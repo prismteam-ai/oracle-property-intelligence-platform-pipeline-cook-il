@@ -1,0 +1,12 @@
+dist
+node_modules
+data
+pnpm-lock.yaml
+.turbo
+README.md
+playwright-report
+test-results
+cdk.out
+infra/cdk/test/fixtures
+publications/
+.playwright-mcp

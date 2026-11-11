@@ -1,0 +1,146 @@
+[
+  {
+    "time": "2026-11-10T23:39:19Z",
+    "status": 200,
+    "ms": 199,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:22Z",
+    "status": 200,
+    "ms": 166,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:25Z",
+    "status": 200,
+    "ms": 174,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:28Z",
+    "status": 200,
+    "ms": 181,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:31Z",
+    "status": 200,
+    "ms": 170,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:35Z",
+    "status": 200,
+    "ms": 157,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:38Z",
+    "status": 200,
+    "ms": 169,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:41Z",
+    "status": 200,
+    "ms": 168,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:44Z",
+    "status": 200,
+    "ms": 195,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:47Z",
+    "status": 200,
+    "ms": 161,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:50Z",
+    "status": 200,
+    "ms": 172,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  },
+  {
+    "time": "2026-11-10T23:39:54Z",
+    "status": 200,
+    "ms": 157,
+    "body": {
+      "ok": true,
+      "runId": "20261110T221716Z",
+      "rootCid": "bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq",
+      "dataset": "parquet",
+      "commit": "f2666b9"
+    }
+  }
+]

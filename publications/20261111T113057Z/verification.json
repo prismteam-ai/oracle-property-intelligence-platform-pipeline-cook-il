@@ -1,0 +1,1231 @@
+{
+  "run_id": "20261111T113057Z",
+  "root_cid": "bafybeihbokg6grblfe6ftrpns5qtwmckygirfrftbmdw5oixwlsjj3byni",
+  "verified_at": "2026-11-11T11:41:33.529Z",
+  "verifier": "pipeline-host",
+  "gateways": [
+    "https://gw.ipfs-lens.dev/ipfs/",
+    "https://dget.top/ipfs/",
+    "https://ipfs.io/ipfs/",
+    "https://dweb.link/ipfs/",
+    "https://gateway.pinata.cloud/ipfs/",
+    "https://ipfs.filebase.io/ipfs/"
+  ],
+  "checks": [
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "business/data_0.parquet",
+      "cid": "bafybeig2vot57rqng7cu6m4wztmoghobhyi26mkr7gvnahffwkigbs5xdi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 28363,
+      "fetched_at": "2026-11-11T11:36:29.842Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "business/data_1.parquet",
+      "cid": "bafybeib3d547r644eujk6jn6wwff7hmji3dwvt3x3vhclmwdsj2vtx2osa",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 28339,
+      "fetched_at": "2026-11-11T11:37:33.183Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "contractor_has_license/data_0.parquet",
+      "cid": "bafybeiac3hg3qvacabsnbbzm6bflxwsq67qxiidnu5oslr2uuuq27k3lcy",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 1826,
+      "fetched_at": "2026-11-11T11:37:35.009Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "contractor/data_0.parquet",
+      "cid": "bafybeiad6lwg36zsktqv2fa5yb2nqafxlqclaoelayorqvcoxw3czaes2a",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 7551,
+      "fetched_at": "2026-11-11T11:37:42.560Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "permit/data_0.parquet",
+      "cid": "bafybeigrvlfc3qlprjlcana7wbyddr6gsidgwscsthdfdbjphzxvtfjmqq",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 14841,
+      "fetched_at": "2026-11-11T11:37:57.401Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "permit/data_1.parquet",
+      "cid": "bafybeihc5yxalb3uv5nc43a5c5opm3jd6k4zq6md4brlx2n27ksg564yk4",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 9150,
+      "fetched_at": "2026-11-11T11:38:06.551Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "permit/data_2.parquet",
+      "cid": "bafybeic2rtcafqmchuzkuysfuavdgy2lo5zywzgk2t65svfyeviwrixdmi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 18901,
+      "fetched_at": "2026-11-11T11:38:25.452Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "permit/data_3.parquet",
+      "cid": "bafybeif7gt22nwa27jke2qkrlxsx33ghsoqdy3s6kl6t7ni3pto6gut4du",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 14752,
+      "fetched_at": "2026-11-11T11:38:40.205Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "permit/data_4.parquet",
+      "cid": "bafybeiajzz26iyhnnu37ybyob4aseewoedjsdobhfsqiqjmr5opadzczsm",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 3545,
+      "fetched_at": "2026-11-11T11:38:43.750Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "property_improvement_has_contractor/data_0.parquet",
+      "cid": "bafybeicmycc7yrlpcjueqt6fsl5hl2arsjs6gaquuurw7unmht67cfyhly",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 2198,
+      "fetched_at": "2026-11-11T11:38:45.948Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "property/data_0.parquet",
+      "cid": "bafybeid52c7xp7ojd36jqttqil5vzuu5ekjofjozwdyzfltmbdravu226u",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 24133,
+      "fetched_at": "2026-11-11T11:39:10.081Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "property/data_1.parquet",
+      "cid": "bafybeidcdx2uoloyyxya5snyeygamqa4hfyxdpnlfciizfs54kucvg7l5m",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 20351,
+      "fetched_at": "2026-11-11T11:39:30.432Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "property/data_2.parquet",
+      "cid": "bafybeibgreysxbpdpdwjqq62vpsz4obdjvqs6d47n4hrtcf6huzbqyhiyi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 19128,
+      "fetched_at": "2026-11-11T11:39:49.560Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "sale/data_0.parquet",
+      "cid": "bafybeie2ykqnym56mkbsjdtjg27ymuw3ie3hqz4pltgiau3p7hnu4qzkua",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 21893,
+      "fetched_at": "2026-11-11T11:40:11.453Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "sale/data_1.parquet",
+      "cid": "bafybeic3iera373ginppl6grmlyeroep7qu24uoeq44gu2e3z3eiujifp4",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 23248,
+      "fetched_at": "2026-11-11T11:40:34.701Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "sale/data_2.parquet",
+      "cid": "bafybeihmxqqarzxxw455bt2jzm4kdfncuhpfefarstrxnqog7ilklrt27a",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 23452,
+      "fetched_at": "2026-11-11T11:40:58.153Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "sale/data_3.parquet",
+      "cid": "bafybeicm4y7uf7fjsb6r3bay5fhn6h56mbgwkxfnr37qomks4jqgkago3u",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 22023,
+      "fetched_at": "2026-11-11T11:41:20.176Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "sale/data_4.parquet",
+      "cid": "bafybeieet54fjz3bv5ivmre2zkgzidsbzw4hsdmshfcls2l6p56at4ufhe",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 11777,
+      "fetched_at": "2026-11-11T11:41:31.953Z"
+    },
+    {
+      "gateway": "https://gw.ipfs-lens.dev/ipfs/",
+      "name": "source_watermark/data_0.parquet",
+      "cid": "bafkreifw2pvs5soenvfjfgbjfkssrenyearyc4egq7u4jwh5t4kwgpqvey",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 1575,
+      "fetched_at": "2026-11-11T11:41:33.528Z"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "business/data_0.parquet",
+      "cid": "bafybeig2vot57rqng7cu6m4wztmoghobhyi26mkr7gvnahffwkigbs5xdi",
+      "status": 504,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 803,
+      "fetched_at": "2026-11-11T11:36:33.468Z"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "business/data_1.parquet",
+      "cid": "bafybeib3d547r644eujk6jn6wwff7hmji3dwvt3x3vhclmwdsj2vtx2osa",
+      "status": 504,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 963,
+      "fetched_at": "2026-11-11T11:37:04.899Z"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "contractor_has_license/data_0.parquet",
+      "cid": "bafybeiac3hg3qvacabsnbbzm6bflxwsq67qxiidnu5oslr2uuuq27k3lcy",
+      "status": 504,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 749,
+      "fetched_at": "2026-11-11T11:37:36.110Z"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "contractor/data_0.parquet",
+      "cid": "bafybeiad6lwg36zsktqv2fa5yb2nqafxlqclaoelayorqvcoxw3czaes2a",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "permit/data_0.parquet",
+      "cid": "bafybeigrvlfc3qlprjlcana7wbyddr6gsidgwscsthdfdbjphzxvtfjmqq",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "permit/data_1.parquet",
+      "cid": "bafybeihc5yxalb3uv5nc43a5c5opm3jd6k4zq6md4brlx2n27ksg564yk4",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "permit/data_2.parquet",
+      "cid": "bafybeic2rtcafqmchuzkuysfuavdgy2lo5zywzgk2t65svfyeviwrixdmi",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "permit/data_3.parquet",
+      "cid": "bafybeif7gt22nwa27jke2qkrlxsx33ghsoqdy3s6kl6t7ni3pto6gut4du",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "permit/data_4.parquet",
+      "cid": "bafybeiajzz26iyhnnu37ybyob4aseewoedjsdobhfsqiqjmr5opadzczsm",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "property_improvement_has_contractor/data_0.parquet",
+      "cid": "bafybeicmycc7yrlpcjueqt6fsl5hl2arsjs6gaquuurw7unmht67cfyhly",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "property/data_0.parquet",
+      "cid": "bafybeid52c7xp7ojd36jqttqil5vzuu5ekjofjozwdyzfltmbdravu226u",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "property/data_1.parquet",
+      "cid": "bafybeidcdx2uoloyyxya5snyeygamqa4hfyxdpnlfciizfs54kucvg7l5m",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "property/data_2.parquet",
+      "cid": "bafybeibgreysxbpdpdwjqq62vpsz4obdjvqs6d47n4hrtcf6huzbqyhiyi",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "sale/data_0.parquet",
+      "cid": "bafybeie2ykqnym56mkbsjdtjg27ymuw3ie3hqz4pltgiau3p7hnu4qzkua",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "sale/data_1.parquet",
+      "cid": "bafybeic3iera373ginppl6grmlyeroep7qu24uoeq44gu2e3z3eiujifp4",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "sale/data_2.parquet",
+      "cid": "bafybeihmxqqarzxxw455bt2jzm4kdfncuhpfefarstrxnqog7ilklrt27a",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "sale/data_3.parquet",
+      "cid": "bafybeicm4y7uf7fjsb6r3bay5fhn6h56mbgwkxfnr37qomks4jqgkago3u",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "sale/data_4.parquet",
+      "cid": "bafybeieet54fjz3bv5ivmre2zkgzidsbzw4hsdmshfcls2l6p56at4ufhe",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dget.top/ipfs/",
+      "name": "source_watermark/data_0.parquet",
+      "cid": "bafkreifw2pvs5soenvfjfgbjfkssrenyearyc4egq7u4jwh5t4kwgpqvey",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:37:36.110Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "business/data_0.parquet",
+      "cid": "bafybeig2vot57rqng7cu6m4wztmoghobhyi26mkr7gvnahffwkigbs5xdi",
+      "status": 429,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 209,
+      "fetched_at": "2026-11-11T11:36:07.263Z"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "business/data_1.parquet",
+      "cid": "bafybeib3d547r644eujk6jn6wwff7hmji3dwvt3x3vhclmwdsj2vtx2osa",
+      "status": 429,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 290,
+      "fetched_at": "2026-11-11T11:36:12.748Z"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "contractor_has_license/data_0.parquet",
+      "cid": "bafybeiac3hg3qvacabsnbbzm6bflxwsq67qxiidnu5oslr2uuuq27k3lcy",
+      "status": 429,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 266,
+      "fetched_at": "2026-11-11T11:36:18.297Z"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "contractor/data_0.parquet",
+      "cid": "bafybeiad6lwg36zsktqv2fa5yb2nqafxlqclaoelayorqvcoxw3czaes2a",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "permit/data_0.parquet",
+      "cid": "bafybeigrvlfc3qlprjlcana7wbyddr6gsidgwscsthdfdbjphzxvtfjmqq",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "permit/data_1.parquet",
+      "cid": "bafybeihc5yxalb3uv5nc43a5c5opm3jd6k4zq6md4brlx2n27ksg564yk4",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "permit/data_2.parquet",
+      "cid": "bafybeic2rtcafqmchuzkuysfuavdgy2lo5zywzgk2t65svfyeviwrixdmi",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "permit/data_3.parquet",
+      "cid": "bafybeif7gt22nwa27jke2qkrlxsx33ghsoqdy3s6kl6t7ni3pto6gut4du",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "permit/data_4.parquet",
+      "cid": "bafybeiajzz26iyhnnu37ybyob4aseewoedjsdobhfsqiqjmr5opadzczsm",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "property_improvement_has_contractor/data_0.parquet",
+      "cid": "bafybeicmycc7yrlpcjueqt6fsl5hl2arsjs6gaquuurw7unmht67cfyhly",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "property/data_0.parquet",
+      "cid": "bafybeid52c7xp7ojd36jqttqil5vzuu5ekjofjozwdyzfltmbdravu226u",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "property/data_1.parquet",
+      "cid": "bafybeidcdx2uoloyyxya5snyeygamqa4hfyxdpnlfciizfs54kucvg7l5m",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "property/data_2.parquet",
+      "cid": "bafybeibgreysxbpdpdwjqq62vpsz4obdjvqs6d47n4hrtcf6huzbqyhiyi",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "sale/data_0.parquet",
+      "cid": "bafybeie2ykqnym56mkbsjdtjg27ymuw3ie3hqz4pltgiau3p7hnu4qzkua",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "sale/data_1.parquet",
+      "cid": "bafybeic3iera373ginppl6grmlyeroep7qu24uoeq44gu2e3z3eiujifp4",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "sale/data_2.parquet",
+      "cid": "bafybeihmxqqarzxxw455bt2jzm4kdfncuhpfefarstrxnqog7ilklrt27a",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "sale/data_3.parquet",
+      "cid": "bafybeicm4y7uf7fjsb6r3bay5fhn6h56mbgwkxfnr37qomks4jqgkago3u",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "sale/data_4.parquet",
+      "cid": "bafybeieet54fjz3bv5ivmre2zkgzidsbzw4hsdmshfcls2l6p56at4ufhe",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://ipfs.io/ipfs/",
+      "name": "source_watermark/data_0.parquet",
+      "cid": "bafkreifw2pvs5soenvfjfgbjfkssrenyearyc4egq7u4jwh5t4kwgpqvey",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:18.297Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "business/data_0.parquet",
+      "cid": "bafybeig2vot57rqng7cu6m4wztmoghobhyi26mkr7gvnahffwkigbs5xdi",
+      "status": 429,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 278,
+      "fetched_at": "2026-11-11T11:36:10.929Z"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "business/data_1.parquet",
+      "cid": "bafybeib3d547r644eujk6jn6wwff7hmji3dwvt3x3vhclmwdsj2vtx2osa",
+      "status": 429,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 237,
+      "fetched_at": "2026-11-11T11:36:16.605Z"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "contractor_has_license/data_0.parquet",
+      "cid": "bafybeiac3hg3qvacabsnbbzm6bflxwsq67qxiidnu5oslr2uuuq27k3lcy",
+      "status": 429,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 209,
+      "fetched_at": "2026-11-11T11:36:26.140Z"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "contractor/data_0.parquet",
+      "cid": "bafybeiad6lwg36zsktqv2fa5yb2nqafxlqclaoelayorqvcoxw3czaes2a",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "permit/data_0.parquet",
+      "cid": "bafybeigrvlfc3qlprjlcana7wbyddr6gsidgwscsthdfdbjphzxvtfjmqq",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "permit/data_1.parquet",
+      "cid": "bafybeihc5yxalb3uv5nc43a5c5opm3jd6k4zq6md4brlx2n27ksg564yk4",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "permit/data_2.parquet",
+      "cid": "bafybeic2rtcafqmchuzkuysfuavdgy2lo5zywzgk2t65svfyeviwrixdmi",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "permit/data_3.parquet",
+      "cid": "bafybeif7gt22nwa27jke2qkrlxsx33ghsoqdy3s6kl6t7ni3pto6gut4du",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "permit/data_4.parquet",
+      "cid": "bafybeiajzz26iyhnnu37ybyob4aseewoedjsdobhfsqiqjmr5opadzczsm",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "property_improvement_has_contractor/data_0.parquet",
+      "cid": "bafybeicmycc7yrlpcjueqt6fsl5hl2arsjs6gaquuurw7unmht67cfyhly",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "property/data_0.parquet",
+      "cid": "bafybeid52c7xp7ojd36jqttqil5vzuu5ekjofjozwdyzfltmbdravu226u",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "property/data_1.parquet",
+      "cid": "bafybeidcdx2uoloyyxya5snyeygamqa4hfyxdpnlfciizfs54kucvg7l5m",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "property/data_2.parquet",
+      "cid": "bafybeibgreysxbpdpdwjqq62vpsz4obdjvqs6d47n4hrtcf6huzbqyhiyi",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "sale/data_0.parquet",
+      "cid": "bafybeie2ykqnym56mkbsjdtjg27ymuw3ie3hqz4pltgiau3p7hnu4qzkua",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "sale/data_1.parquet",
+      "cid": "bafybeic3iera373ginppl6grmlyeroep7qu24uoeq44gu2e3z3eiujifp4",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "sale/data_2.parquet",
+      "cid": "bafybeihmxqqarzxxw455bt2jzm4kdfncuhpfefarstrxnqog7ilklrt27a",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "sale/data_3.parquet",
+      "cid": "bafybeicm4y7uf7fjsb6r3bay5fhn6h56mbgwkxfnr37qomks4jqgkago3u",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "sale/data_4.parquet",
+      "cid": "bafybeieet54fjz3bv5ivmre2zkgzidsbzw4hsdmshfcls2l6p56at4ufhe",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://dweb.link/ipfs/",
+      "name": "source_watermark/data_0.parquet",
+      "cid": "bafkreifw2pvs5soenvfjfgbjfkssrenyearyc4egq7u4jwh5t4kwgpqvey",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 0,
+      "fetched_at": "2026-11-11T11:36:26.140Z",
+      "error": "skipped: gateway rate-limited or unreachable on 3 consecutive objects"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "business/data_0.parquet",
+      "cid": "bafybeig2vot57rqng7cu6m4wztmoghobhyi26mkr7gvnahffwkigbs5xdi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 9743,
+      "fetched_at": "2026-11-11T11:36:11.250Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "business/data_1.parquet",
+      "cid": "bafybeib3d547r644eujk6jn6wwff7hmji3dwvt3x3vhclmwdsj2vtx2osa",
+      "status": 0,
+      "size_match": false,
+      "digest_match": false,
+      "ms": 30000,
+      "fetched_at": "2026-11-11T11:37:16.254Z",
+      "error": "TimeoutError: The operation was aborted due to timeout"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "contractor_has_license/data_0.parquet",
+      "cid": "bafybeiac3hg3qvacabsnbbzm6bflxwsq67qxiidnu5oslr2uuuq27k3lcy",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 4611,
+      "fetched_at": "2026-11-11T11:37:20.865Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "contractor/data_0.parquet",
+      "cid": "bafybeiad6lwg36zsktqv2fa5yb2nqafxlqclaoelayorqvcoxw3czaes2a",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 5970,
+      "fetched_at": "2026-11-11T11:37:26.835Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "permit/data_0.parquet",
+      "cid": "bafybeigrvlfc3qlprjlcana7wbyddr6gsidgwscsthdfdbjphzxvtfjmqq",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 7949,
+      "fetched_at": "2026-11-11T11:37:34.784Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "permit/data_1.parquet",
+      "cid": "bafybeihc5yxalb3uv5nc43a5c5opm3jd6k4zq6md4brlx2n27ksg564yk4",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 5497,
+      "fetched_at": "2026-11-11T11:37:40.281Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "permit/data_2.parquet",
+      "cid": "bafybeic2rtcafqmchuzkuysfuavdgy2lo5zywzgk2t65svfyeviwrixdmi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 8696,
+      "fetched_at": "2026-11-11T11:37:48.977Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "permit/data_3.parquet",
+      "cid": "bafybeif7gt22nwa27jke2qkrlxsx33ghsoqdy3s6kl6t7ni3pto6gut4du",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 8804,
+      "fetched_at": "2026-11-11T11:37:57.781Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "permit/data_4.parquet",
+      "cid": "bafybeiajzz26iyhnnu37ybyob4aseewoedjsdobhfsqiqjmr5opadzczsm",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 8239,
+      "fetched_at": "2026-11-11T11:38:06.020Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "property_improvement_has_contractor/data_0.parquet",
+      "cid": "bafybeicmycc7yrlpcjueqt6fsl5hl2arsjs6gaquuurw7unmht67cfyhly",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 5218,
+      "fetched_at": "2026-11-11T11:38:11.238Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "property/data_0.parquet",
+      "cid": "bafybeid52c7xp7ojd36jqttqil5vzuu5ekjofjozwdyzfltmbdravu226u",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 8080,
+      "fetched_at": "2026-11-11T11:38:19.318Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "property/data_1.parquet",
+      "cid": "bafybeidcdx2uoloyyxya5snyeygamqa4hfyxdpnlfciizfs54kucvg7l5m",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 7322,
+      "fetched_at": "2026-11-11T11:38:26.640Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "property/data_2.parquet",
+      "cid": "bafybeibgreysxbpdpdwjqq62vpsz4obdjvqs6d47n4hrtcf6huzbqyhiyi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 8435,
+      "fetched_at": "2026-11-11T11:38:35.075Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "sale/data_0.parquet",
+      "cid": "bafybeie2ykqnym56mkbsjdtjg27ymuw3ie3hqz4pltgiau3p7hnu4qzkua",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 6073,
+      "fetched_at": "2026-11-11T11:38:41.148Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "sale/data_1.parquet",
+      "cid": "bafybeic3iera373ginppl6grmlyeroep7qu24uoeq44gu2e3z3eiujifp4",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 9221,
+      "fetched_at": "2026-11-11T11:38:50.369Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "sale/data_2.parquet",
+      "cid": "bafybeihmxqqarzxxw455bt2jzm4kdfncuhpfefarstrxnqog7ilklrt27a",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 7288,
+      "fetched_at": "2026-11-11T11:38:57.657Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "sale/data_3.parquet",
+      "cid": "bafybeicm4y7uf7fjsb6r3bay5fhn6h56mbgwkxfnr37qomks4jqgkago3u",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 9595,
+      "fetched_at": "2026-11-11T11:39:07.252Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "sale/data_4.parquet",
+      "cid": "bafybeieet54fjz3bv5ivmre2zkgzidsbzw4hsdmshfcls2l6p56at4ufhe",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 6045,
+      "fetched_at": "2026-11-11T11:39:13.297Z"
+    },
+    {
+      "gateway": "https://gateway.pinata.cloud/ipfs/",
+      "name": "source_watermark/data_0.parquet",
+      "cid": "bafkreifw2pvs5soenvfjfgbjfkssrenyearyc4egq7u4jwh5t4kwgpqvey",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 6497,
+      "fetched_at": "2026-11-11T11:39:19.794Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "business/data_0.parquet",
+      "cid": "bafybeig2vot57rqng7cu6m4wztmoghobhyi26mkr7gvnahffwkigbs5xdi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 3563,
+      "fetched_at": "2026-11-11T11:36:05.073Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "business/data_1.parquet",
+      "cid": "bafybeib3d547r644eujk6jn6wwff7hmji3dwvt3x3vhclmwdsj2vtx2osa",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 4474,
+      "fetched_at": "2026-11-11T11:36:09.547Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "contractor_has_license/data_0.parquet",
+      "cid": "bafybeiac3hg3qvacabsnbbzm6bflxwsq67qxiidnu5oslr2uuuq27k3lcy",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 1177,
+      "fetched_at": "2026-11-11T11:36:10.724Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "contractor/data_0.parquet",
+      "cid": "bafybeiad6lwg36zsktqv2fa5yb2nqafxlqclaoelayorqvcoxw3czaes2a",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 1053,
+      "fetched_at": "2026-11-11T11:36:11.777Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "permit/data_0.parquet",
+      "cid": "bafybeigrvlfc3qlprjlcana7wbyddr6gsidgwscsthdfdbjphzxvtfjmqq",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 2314,
+      "fetched_at": "2026-11-11T11:36:14.091Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "permit/data_1.parquet",
+      "cid": "bafybeihc5yxalb3uv5nc43a5c5opm3jd6k4zq6md4brlx2n27ksg564yk4",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 5249,
+      "fetched_at": "2026-11-11T11:36:19.340Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "permit/data_2.parquet",
+      "cid": "bafybeic2rtcafqmchuzkuysfuavdgy2lo5zywzgk2t65svfyeviwrixdmi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 2945,
+      "fetched_at": "2026-11-11T11:36:22.285Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "permit/data_3.parquet",
+      "cid": "bafybeif7gt22nwa27jke2qkrlxsx33ghsoqdy3s6kl6t7ni3pto6gut4du",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 2104,
+      "fetched_at": "2026-11-11T11:36:24.389Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "permit/data_4.parquet",
+      "cid": "bafybeiajzz26iyhnnu37ybyob4aseewoedjsdobhfsqiqjmr5opadzczsm",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 1212,
+      "fetched_at": "2026-11-11T11:36:25.601Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "property_improvement_has_contractor/data_0.parquet",
+      "cid": "bafybeicmycc7yrlpcjueqt6fsl5hl2arsjs6gaquuurw7unmht67cfyhly",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 269,
+      "fetched_at": "2026-11-11T11:36:25.870Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "property/data_0.parquet",
+      "cid": "bafybeid52c7xp7ojd36jqttqil5vzuu5ekjofjozwdyzfltmbdravu226u",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 3856,
+      "fetched_at": "2026-11-11T11:36:29.726Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "property/data_1.parquet",
+      "cid": "bafybeidcdx2uoloyyxya5snyeygamqa4hfyxdpnlfciizfs54kucvg7l5m",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 5689,
+      "fetched_at": "2026-11-11T11:36:35.416Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "property/data_2.parquet",
+      "cid": "bafybeibgreysxbpdpdwjqq62vpsz4obdjvqs6d47n4hrtcf6huzbqyhiyi",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 3117,
+      "fetched_at": "2026-11-11T11:36:38.533Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "sale/data_0.parquet",
+      "cid": "bafybeie2ykqnym56mkbsjdtjg27ymuw3ie3hqz4pltgiau3p7hnu4qzkua",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 3026,
+      "fetched_at": "2026-11-11T11:36:41.559Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "sale/data_1.parquet",
+      "cid": "bafybeic3iera373ginppl6grmlyeroep7qu24uoeq44gu2e3z3eiujifp4",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 2268,
+      "fetched_at": "2026-11-11T11:36:43.827Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "sale/data_2.parquet",
+      "cid": "bafybeihmxqqarzxxw455bt2jzm4kdfncuhpfefarstrxnqog7ilklrt27a",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 3029,
+      "fetched_at": "2026-11-11T11:36:46.857Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "sale/data_3.parquet",
+      "cid": "bafybeicm4y7uf7fjsb6r3bay5fhn6h56mbgwkxfnr37qomks4jqgkago3u",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 2820,
+      "fetched_at": "2026-11-11T11:36:49.677Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "sale/data_4.parquet",
+      "cid": "bafybeieet54fjz3bv5ivmre2zkgzidsbzw4hsdmshfcls2l6p56at4ufhe",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 1724,
+      "fetched_at": "2026-11-11T11:36:51.401Z"
+    },
+    {
+      "gateway": "https://ipfs.filebase.io/ipfs/",
+      "name": "source_watermark/data_0.parquet",
+      "cid": "bafkreifw2pvs5soenvfjfgbjfkssrenyearyc4egq7u4jwh5t4kwgpqvey",
+      "status": 200,
+      "size_match": true,
+      "digest_match": true,
+      "ms": 256,
+      "fetched_at": "2026-11-11T11:36:51.657Z"
+    }
+  ],
+  "summary": {
+    "https://gw.ipfs-lens.dev/ipfs/": {
+      "ok": 19,
+      "total": 19
+    },
+    "https://dget.top/ipfs/": {
+      "ok": 0,
+      "total": 19
+    },
+    "https://ipfs.io/ipfs/": {
+      "ok": 0,
+      "total": 19
+    },
+    "https://dweb.link/ipfs/": {
+      "ok": 0,
+      "total": 19
+    },
+    "https://gateway.pinata.cloud/ipfs/": {
+      "ok": 18,
+      "total": 19
+    },
+    "https://ipfs.filebase.io/ipfs/": {
+      "ok": 19,
+      "total": 19
+    }
+  }
+}

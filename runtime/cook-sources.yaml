@@ -1,0 +1,137 @@
+county: Cook
+state: IL
+slug: cook-il
+fips: "17031"
+snapshot_time: "2026-11-10T20:00:00Z"
+
+parcel:
+  canonical_source: assessor_parcel_universe_current_year
+  assessed_parcel_count: 1864469
+  gis_feature_count: 1861471
+  discrepancy_threshold_pct: 2.0
+  discrepancy_explanation: 2,998 parcels in the Assessor universe have no centroid (lat/lon null); the Assessor universe is canonical
+  separately_assessed_without_geometry: acknowledged
+  identifier_proven: true
+  identifier_name: PIN
+  identifier_format: "##-##-###-###-####"
+  join_rule: Strip punctuation, keep 14 digits; Chicago permits carry pin10 (first 10 digits)
+
+sources:
+  - {
+      source_system: cook_parcels,
+      dataset: pabr-t5kh,
+      host: datacatalog.cookcountyil.gov,
+      mode: bulk-api,
+      rows: 1864469,
+      feeds: property,
+    }
+  - {
+      source_system: cook_characteristics,
+      dataset: x54s-btds,
+      host: datacatalog.cookcountyil.gov,
+      mode: bulk-api,
+      filter: "year=2026",
+      rows: 1102912,
+      feeds: property,
+    }
+  - {
+      source_system: cook_addresses,
+      dataset: 3723-97qp,
+      host: datacatalog.cookcountyil.gov,
+      mode: bulk-api,
+      filter: "year=2026",
+      rows: 1864469,
+      feeds: property,
+    }
+  - {
+      source_system: cook_sales,
+      dataset: wvhk-k5uv,
+      host: datacatalog.cookcountyil.gov,
+      mode: bulk-api,
+      rows: 2688811,
+      feeds: sale,
+    }
+  - {
+      source_system: cook_assessor_permits,
+      dataset: 6yjf-dfxs,
+      host: datacatalog.cookcountyil.gov,
+      mode: bulk-api,
+      rows: 754772,
+      feeds: permit,
+    }
+  - {
+      source_system: chicago_permits,
+      dataset: ydr8-5enu,
+      host: data.cityofchicago.org,
+      mode: bulk-api,
+      rows: 852615,
+      feeds: permit,
+    }
+  - {
+      source_system: chicago_business_licenses,
+      dataset: r5kz-chrr,
+      host: data.cityofchicago.org,
+      mode: bulk-api,
+      rows: 1211181,
+      feeds: business,
+    }
+  - {
+      source_system: idfpr_roofing,
+      dataset: pzzh-kp68,
+      host: data.illinois.gov,
+      mode: bulk-api,
+      filter: "license_type='ROOFING CONTRACTOR'",
+      rows: 34116,
+      feeds: contractor,
+    }
+  - {
+      source_system: cook_clerk_recordings,
+      mode: unavailable,
+      note: portal search only,
+      no bulk export,
+    }
+  - { source_system: cook_treasurer, mode: unavailable, note: portal only }
+  - { source_system: chicago_trade_licenses, mode: unavailable, note: HTML search only }
+  - { source_system: bbb, mode: not-harvested, note: bbb_state unknown for every contractor }
+
+permits:
+  expected_jurisdiction_count: 3
+  assumes_unified_countywide_history: false
+  jurisdictions:
+    - jurisdiction: City of Chicago
+      status: supported
+      vendor: socrata-open-data
+      portal_kind: historical-export
+      portal: https://data.cityofchicago.org/d/ydr8-5enu
+      historical_records: true
+      source_system: chicago_permits
+    - jurisdiction: Unincorporated Cook County (Building & Zoning)
+      status: delegated
+      vendor: assessor-permit-feed
+      portal_kind: historical-export
+      portal: https://datacatalog.cookcountyil.gov/d/6yjf-dfxs
+      historical_records: true
+      source_system: cook_assessor_permits
+      note: county permit portal not bulk-exportable; assessor copy of permits used
+    - jurisdiction: Suburban municipalities (approx. 130, grouped)
+      status: delegated
+      vendor: mixed (Accela, Tyler, BS&A, CityView, paper)
+      portal_kind: historical-export
+      portal: https://datacatalog.cookcountyil.gov/d/6yjf-dfxs
+      historical_records: true
+      source_system: cook_assessor_permits
+      note: municipal portals NOT enumerated individually in this pass (grouped row keeps the validator permit gate green; a per-municipality catalog would be needs-review); assessor copy of permits used countywide (no contractor license, no close date)
+
+destination:
+  writes_in_scope: false
+  note: this milestone writes DuckDB/Parquet locally and publishes to IPFS; no Query DB writes
+
+enrichment:
+  bbb:
+    expected_count: null
+    advertised_listing_count: null
+    listing_page_cap: 24
+    cap_acknowledged: true
+    status: not-harvested
+
+approved_exceptions: []

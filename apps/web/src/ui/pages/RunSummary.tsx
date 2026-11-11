@@ -1,0 +1,252 @@
+import { Link } from "react-router-dom";
+import { Card, ExtLink, FixtureBanner, Kv, Status, Table } from "../components.js";
+import { fmt, fmtTs, manifestIdNote, trpc, useAsync } from "../trpc.js";
+import { gatewayKind } from "./Publications.js";
+
+export function RunSummary() {
+  const q = useAsync(() => trpc.runs.latest.query(), "latest");
+  const pubId = q.data?.source.publishedRunId ?? null;
+  const pub = useAsync(
+    () => (pubId ? trpc.publications.get.query({ run_id: pubId }) : Promise.resolve(null)),
+    `pub:${pubId ?? ""}`,
+  );
+  if (!q.data) return <Status loading={q.loading} error={q.error} />;
+  const { run, previous, table_counts, coverage, source, sources, dataset_origin, run_count } =
+    q.data;
+  const manifest = pub.data?.publication.manifest ?? null;
+  const deltaRows = Object.entries(run.deltas).map(([table, d]) => ({
+    table,
+    ...d,
+    previous: previous?.counts[table] ?? null,
+    current: run.counts[table] ?? null,
+  }));
+  return (
+    <>
+      <h1>Pipeline run summary</h1>
+      <FixtureBanner limitations={run.limitations} />
+      <div className="cards">
+        <Card
+          label="Latest run"
+          value={<span data-testid="run-id">{run.run_id}</span>}
+          sub={`status: ${run.status}`}
+          testId="card-run"
+        />
+        <Card label="Started (UTC)" value={fmtTs(run.started_at)} testId="card-started" />
+        <Card
+          label="Finished (UTC)"
+          value={run.finished_at ? fmtTs(run.finished_at) : "running"}
+          testId="card-finished"
+        />
+        <Card
+          label="Properties"
+          value={fmt(table_counts.property)}
+          sub={`${fmt(coverage.properties_with_coordinates)} with coordinates`}
+          testId="card-property"
+        />
+        <Card
+          label="Permits"
+          value={fmt(table_counts.permit)}
+          sub={`${fmt(coverage.roofing_permits)} roofing · ${fmt(coverage.open_roofing_permits)} open roofing`}
+          testId="card-permit"
+        />
+        <Card
+          label="Contractors"
+          value={fmt(table_counts.contractor)}
+          sub={`${fmt(coverage.contractors_with_bbb)} with BBB rating`}
+          testId="card-contractor"
+        />
+        <Card label="Businesses" value={fmt(table_counts.business)} testId="card-business" />
+        <Card label="Sales (ownership)" value={fmt(table_counts.sale)} testId="card-sale" />
+        <Card label="Runs in history" value={<Link to="/runs">{fmt(run_count)}</Link>} />
+        <Card
+          label="Publication proof"
+          testId="card-publication"
+          value={
+            pubId ? <Link to={`/publications/${pubId}`}>{pubId}</Link> : "no published run yet"
+          }
+          sub={
+            pubId && (
+              <>
+                <div>root CID {fmt(source.rootCid)}</div>
+                <div>
+                  pins:{" "}
+                  {manifest?.pins.length
+                    ? manifest.pins.map((p) => `${p.provider} ${p.ok ? "ok" : "FAILED"}`).join(", ")
+                    : "none recorded"}
+                </div>
+                {pub.data?.publication.verifications.map(({ file, data: v }) => (
+                  <div key={file}>
+                    {file}:{" "}
+                    {Object.entries(v.summary)
+                      .map(([g, s]) => `${new URL(g).host} ${s.ok}/${s.total} (${gatewayKind(g)})`)
+                      .join(", ")}
+                  </div>
+                ))}
+                {pub.data && !pub.data.publication.verifications.length && (
+                  <div>gateway verification pending</div>
+                )}
+              </>
+            )
+          }
+        />
+      </div>
+
+      <h2>Provenance of this snapshot</h2>
+      <Kv
+        testId="provenance"
+        items={[
+          ["run_id", run.run_id],
+          ["previous_run_id", run.previous_run_id ?? "—"],
+          [
+            "root CID",
+            <span data-testid="root-cid">
+              {source.rootCid ?? "not published yet"}
+              {source.publishedRunId && source.publishedRunId !== run.run_id
+                ? ` (newest published run ${source.publishedRunId}; this run is not published yet)`
+                : ""}
+            </span>,
+          ],
+          [
+            "manifest CID",
+            source.manifestCid ? `${source.manifestCid}${manifestIdNote(source.manifestCid)}` : "—",
+          ],
+          ["synced at (UTC)", fmtTs(source.syncedAt)],
+          [
+            "served from",
+            dataset_origin.kind === "duckdb"
+              ? `DuckDB file ${dataset_origin.path}`
+              : `Parquet views ${dataset_origin.dir}`,
+          ],
+          [
+            "publication",
+            <Link to={`/publications/${source.publishedRunId ?? run.run_id}`}>
+              artifact manifest for {source.publishedRunId ?? run.run_id}
+            </Link>,
+          ],
+        ]}
+      />
+
+      <h2>Sources</h2>
+      <p className="muted">
+        &quot;Last fetched&quot; is the newest run that pulled rows from the source; an incremental
+        or cached run reports 0 rows for sources it did not re-fetch. Watermarks come from the
+        source_watermark table.
+      </p>
+      <Table
+        testId="sources"
+        rows={sources}
+        columns={[
+          { key: "source_system" },
+          { key: "dataset_id" },
+          { key: "url", label: "catalog URL", render: (r) => <ExtLink href={r.url} /> },
+          {
+            key: "last_fetched_at",
+            label: "last fetched at",
+            render: (r) =>
+              r.last_fetch
+                ? `${fmtTs(r.last_fetch.fetched_at)} (run ${r.last_fetch.run_id}${r.last_fetch.rows_fetched === null ? ", from watermark" : ""})`
+                : "never fetched",
+          },
+          {
+            key: "last_rows",
+            label: "rows (last fetching run)",
+            render: (r) =>
+              !r.last_fetch
+                ? "never fetched"
+                : r.last_fetch.rows_fetched === null
+                  ? "n/a (fetch run not in run history)"
+                  : `${fmt(r.last_fetch.rows_fetched)} in ${r.last_fetch.run_id}`,
+          },
+          {
+            key: "watermark",
+            render: (r) =>
+              r.watermark
+                ? `${r.watermark.field} = ${fmt(r.watermark.value)} (run ${r.watermark.last_run_id})`
+                : "—",
+          },
+          { key: "rows_fetched", label: "fetched (this run)", render: (r) => fmt(r.rows_fetched) },
+          { key: "rows_staged", label: "staged (this run)", render: (r) => fmt(r.rows_staged) },
+        ]}
+      />
+
+      <h2>County coverage</h2>
+      <div className="cards" data-testid="coverage">
+        <Card label="County" value={coverage.county} />
+        <Card label="Municipalities" value={fmt(coverage.municipalities)} />
+        <Card
+          label="Properties with coordinates"
+          value={fmt(coverage.properties_with_coordinates)}
+          sub={`of ${fmt(coverage.properties_total)}`}
+        />
+        <Card label="Roofs older than 15 y" value={fmt(coverage.roof_over_15y)} />
+        <Card
+          label="Long-open roofing permits (>3 y)"
+          value={fmt(coverage.long_open_roofing_permits)}
+        />
+        <Card label="No ownership change > 10 y" value={fmt(coverage.no_sale_over_10y)} />
+        <Card label="Out-of-area owners" value={fmt(coverage.out_of_area_owners)} />
+        <Card
+          label="Bounding box"
+          value={
+            coverage.bbox
+              ? `${coverage.bbox.min_lat.toFixed(3)}…${coverage.bbox.max_lat.toFixed(3)}`
+              : "—"
+          }
+          sub={
+            coverage.bbox
+              ? `lon ${coverage.bbox.min_lon.toFixed(3)}…${coverage.bbox.max_lon.toFixed(3)}`
+              : undefined
+          }
+        />
+      </div>
+      <h3>Top municipalities</h3>
+      <Table
+        rows={coverage.top_municipalities}
+        columns={[{ key: "municipality" }, { key: "properties" }]}
+        testId="top-municipalities"
+      />
+
+      <h2>Record counts and deltas vs previous run {previous ? `(${previous.run_id})` : ""}</h2>
+      <Table
+        testId="deltas"
+        rows={deltaRows}
+        columns={[
+          { key: "table" },
+          { key: "current", label: "count (this run)" },
+          { key: "previous", label: "count (previous run)" },
+          { key: "inserted", render: (r) => fmt(r.inserted) },
+          { key: "updated", render: (r) => fmt(r.updated) },
+          { key: "unchanged", render: (r) => fmt(r.unchanged) },
+        ]}
+      />
+      <h3>Live row counts in the served snapshot</h3>
+      <Table
+        rows={Object.entries(table_counts).map(([table, rows]) => ({ table, rows }))}
+        columns={[{ key: "table" }, { key: "rows" }]}
+        testId="table-counts"
+      />
+
+      <h2>Dead letters ({run.dead_letters.length})</h2>
+      <Table
+        testId="dead-letters"
+        empty="No dead letters in this run."
+        rows={run.dead_letters}
+        columns={[
+          { key: "source_system" },
+          { key: "stage" },
+          { key: "key", render: (d) => fmt(d.key) },
+          { key: "error", wrap: true },
+          { key: "at", label: "at (UTC)", render: (d) => fmtTs(d.at) },
+        ]}
+      />
+
+      <h2>Limitations</h2>
+      <ul className="plain" data-testid="limitations">
+        {run.limitations.map((l, i) => (
+          <li key={i}>{l}</li>
+        ))}
+        {!run.limitations.length && <li className="muted">none recorded</li>}
+      </ul>
+    </>
+  );
+}

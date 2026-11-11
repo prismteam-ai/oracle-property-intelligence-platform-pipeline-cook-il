@@ -1,5 +1,16 @@
 # Oracle Property Intelligence Platform Pipeline - Cook County, IL
 
+## Submission
+
+- **Live runtime:** https://cook-il.108-142-177-43.nip.io (public, no login)
+- **Demo video:** [cook-il-demo.mp4](https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/download/demo-video-2026-11-11/cook-il-demo.mp4) (2:23, narration only)
+- **Companion PR (Roofing CRM):** https://github.com/prismteam-ai/roofing-crm/pull/21
+- **Run locally:** `pnpm install --frozen-lockfile && pnpm build`, then see `docs/pipeline.md` and `docs/web.md`.
+- **Evidence:** `docs/pr-body-draft.md` (runtime, CIDs, limitations), `docs/e2e-testing-matrix.md`, `docs/kit-usage.md`, `docs/source-links-r3.md`.
+- **Published runs:** manifests and verification in `publications/`; CAR files in this fork's Releases (`run-*`).
+
+---
+
 ## Context
 
 This repository is the **data gathering and ingestion pipeline** that supplies the [Roofing CRM & Lead Identification UI](https://github.com/prismteam-ai/roofing-crm). The CRM helps roofing companies explore properties in their service area, identify aging roofs and open roofing permits, and turn those signals into leads. This pipeline story covers collecting, loading, reconciling, and exposing the underlying property and permit datasets; the CRM UI/workflow itself is out of scope here.
