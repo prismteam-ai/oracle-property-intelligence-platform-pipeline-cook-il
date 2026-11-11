@@ -190,3 +190,7 @@ pnpm --filter @cook/web test:e2e    # playwright: builds, generates the fixture,
   serves the small files (16/26, 20/27; the Parquet parts time out or return 504). The verification records
   (`publications/*/verification*.json`) are the evidence; the "Publication proof" card on `/` and the
   verification tables on `/publications/<run>` show the same per-gateway ok/total.
+
+### Global search ranking and confidence
+
+`findProperties` accepts additive `sort` (`distance`, `roof_age`, `open_days`) and `minConfidence` (`low`, `medium`, `high`). Both SQL filtering and ranking run over all radius matches before LIMIT; `total_in_radius` counts after all filters. Omitted sort preserves the existing default (longest-open for open-only searches, nearest otherwise). `low` confidence keeps all rows, including unknown; medium/high exclude unknown confidence. Invalid roof-age anchors sort last. Explore requests its selected order from the server, including when its sort selector changes, rather than reordering only an already truncated page.

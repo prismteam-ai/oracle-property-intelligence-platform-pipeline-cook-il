@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DuckDBInstance } from "@duckdb/node-api";
@@ -40,6 +40,54 @@ describe("findProperties", () => {
     }
     const d = properties.map((p) => p.distance_miles ?? 0);
     expect([...d].sort((a, b) => a - b)).toEqual(d);
+  });
+  it("ranks and applies confidence across the whole radius before a small limit", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "cook-il-global-rank-"));
+    const path = join(dir, "cook_il.duckdb");
+    await makeFixture(path, join(dir, "publications"));
+    const w = await DuckDBInstance.create(path);
+    const c = await w.connect();
+    await c.run(
+      "UPDATE property SET roof_age_years = 20, roof_age_confidence = 'low', roof_age_anchor_date = '2006-01-01'",
+    );
+    c.closeSync();
+    w.closeSync();
+    const nds = await openDataset(path, join(dir, "dataset"));
+    try {
+      const all = (await findProperties(nds, { ...EVANSTON, radiusMiles: 2, limit: 500 }))
+        .properties;
+      expect(all.length).toBeGreaterThan(2);
+      const target = all[all.length - 1]!;
+      expect(target.pin14).not.toBe(all[0]!.pin14);
+      const writer = await DuckDBInstance.create(path);
+      const conn = await writer.connect();
+      await conn.run(
+        "UPDATE property SET roof_age_years = 100, roof_age_confidence = 'high', roof_age_anchor_date = '1926-01-01' WHERE pin14 = ?",
+        [target.pin14],
+      );
+      await conn.run("UPDATE permit SET open_days = 1");
+      await conn.run(
+        "UPDATE permit SET pin14 = ?, is_roofing = true, status_is_open = true, open_days = 5000 WHERE permit_id = (SELECT permit_id FROM permit LIMIT 1)",
+        [target.pin14],
+      );
+      conn.closeSync();
+      writer.closeSync();
+      const input = { ...EVANSTON, radiusMiles: 2, limit: 1 };
+      const oldest = await findProperties(nds, { ...input, sort: "roof_age" });
+      expect(oldest.properties[0]?.pin14).toBe(target.pin14);
+      expect(oldest.total_in_radius).toBeGreaterThanOrEqual(all.length);
+      const confident = await findProperties(nds, { ...input, minConfidence: "high" });
+      expect(confident.properties[0]?.pin14).toBe(target.pin14);
+      expect(confident.total_in_radius).toBe(1);
+      const longest = await findProperties(nds, { ...input, sort: "open_days" });
+      expect(longest.properties[0]?.pin14).toBe(target.pin14);
+      await expect(
+        findProperties(nds, { ...input, sort: "made_up" } as unknown as typeof input),
+      ).rejects.toThrow();
+    } finally {
+      await nds.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
   it("matches a brute-force count (geohash prefilter loses nothing)", async () => {
     const all = await ds.query("SELECT pin14, lat, lon FROM property");

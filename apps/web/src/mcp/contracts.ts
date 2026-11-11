@@ -77,6 +77,14 @@ export const FindPropertiesInput = z
       .min(0)
       .optional()
       .describe("With openRoofingPermitsOnly: permit open at least this many days"),
+    sort: z
+      .enum(["distance", "roof_age", "open_days"])
+      .optional()
+      .describe("Rank all matching properties before applying limit"),
+    minConfidence: z
+      .enum(["low", "medium", "high"])
+      .optional()
+      .describe("Minimum roof-age confidence; low keeps unknown confidence rows"),
     limit: z.number().int().min(1).max(500).default(50),
   })
   .strict();

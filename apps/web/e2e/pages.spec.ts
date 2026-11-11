@@ -109,7 +109,13 @@ test("explore performs a radius search and shows provenance", async ({ page }) =
     .filter(Number.isFinite);
   expect(ages.length).toBeGreaterThan(1);
   expect([...ages].sort((a, b) => b - a)).toEqual(ages);
+  const sortedRequest = page.waitForResponse((response) =>
+    response.url().includes("/trpc/search.properties"),
+  );
   await page.getByTestId("sort").selectOption("distance");
+  const sortedResponse = await sortedRequest;
+  expect(new URL(sortedResponse.url()).searchParams.get("input")).toContain('"sort":"distance"');
+  await expect(page.getByTestId("search")).toHaveText("Search");
   const miles = (await results.locator(".title").allTextContents()).map((t) =>
     parseFloat(/([\d.]+) mi/.exec(t)?.[1] ?? "NaN"),
   );

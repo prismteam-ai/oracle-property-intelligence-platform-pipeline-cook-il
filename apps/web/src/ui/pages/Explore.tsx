@@ -9,24 +9,6 @@ type Result = Awaited<ReturnType<typeof trpc.search.properties.query>>;
 type Sort = "distance" | "roof_age" | "open_days";
 const CHICAGO = { lat: 41.8781, lon: -87.6298 };
 
-const maxOpenDays = (p: Result["properties"][number]): number =>
-  Math.max(
-    0,
-    ...p.permits.filter((x) => x.is_roofing && x.status_is_open).map((x) => x.open_days ?? 0),
-  );
-/** ponytail: sorts the returned page (≤100 rows) client-side; the server orders by distance / open days. */
-export function sortResults(rows: Result["properties"], sort: Sort): Result["properties"] {
-  const by: Record<
-    Sort,
-    (a: Result["properties"][number], b: Result["properties"][number]) => number
-  > = {
-    distance: (a, b) => (a.distance_miles ?? Infinity) - (b.distance_miles ?? Infinity),
-    roof_age: (a, b) => (b.roof_age_years ?? -1) - (a.roof_age_years ?? -1),
-    open_days: (a, b) => maxOpenDays(b) - maxOpenDays(a),
-  };
-  return [...rows].sort(by[sort]);
-}
-
 export function Explore() {
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -100,7 +82,7 @@ export function Explore() {
     });
   }, [pin, radius]);
 
-  const search = async () => {
+  const search = async (selectedSort: Sort = sort) => {
     setBusy(true);
     setError(null);
     try {
@@ -111,6 +93,7 @@ export function Explore() {
         minRoofAge: minRoofAge === "" ? undefined : minRoofAge,
         openRoofingPermitsOnly: openOnly,
         minOpenDays: openOnly && minOpenYears !== "" ? Math.round(minOpenYears * 365) : undefined,
+        sort: selectedSort,
         limit: 100,
       });
       setRes(r);
@@ -206,7 +189,12 @@ export function Explore() {
           sort results
           <select
             value={sort}
-            onChange={(e) => setSortChoice(e.target.value as Sort)}
+            disabled={busy}
+            onChange={(e) => {
+              const next = e.target.value as Sort;
+              setSortChoice(next);
+              if (res) void search(next);
+            }}
             data-testid="sort"
           >
             <option value="distance">distance</option>
@@ -214,7 +202,12 @@ export function Explore() {
             <option value="open_days">open days desc</option>
           </select>
         </label>
-        <button className="primary" onClick={search} disabled={busy} data-testid="search">
+        <button
+          className="primary"
+          onClick={() => void search()}
+          disabled={busy}
+          data-testid="search"
+        >
           {busy ? "Searching…" : "Search"}
         </button>
       </div>
@@ -235,7 +228,7 @@ export function Explore() {
           )}
           <div data-testid="results">
             {res &&
-              sortResults(res.properties, sort).map((p) => (
+              res.properties.map((p) => (
                 <div className="result" key={p.pin14} data-testid="result">
                   <div className="title">
                     PIN {p.pin14} · {p.address}, {p.city} {p.zip} · {fmt(p.distance_miles)} mi

@@ -81,13 +81,19 @@ export async function findProperties(
     where.push(`roof_age_years >= ? AND ${VALID_ANCHOR_SQL}`);
     params.push(minRoofAge);
   }
+  if (input.minConfidence === "high") where.push("roof_age_confidence = 'high'");
+  else if (input.minConfidence === "medium")
+    where.push("roof_age_confidence IN ('medium', 'high')");
   const openPermitSql = `SELECT max(open_days) FROM permit x WHERE x.pin14 = property.pin14 AND x.is_roofing AND x.status_is_open${
     input.minOpenDays !== undefined ? ` AND x.open_days >= ${Math.floor(input.minOpenDays)}` : ""
   }`;
   if (input.openRoofingPermitsOnly) where.push(`(${openPermitSql}) IS NOT NULL`);
-  const orderBy = input.openRoofingPermitsOnly
-    ? `(${openPermitSql}) DESC, distance_miles ASC`
-    : "distance_miles ASC";
+  const sort = input.sort ?? (input.openRoofingPermitsOnly ? "open_days" : "distance");
+  const orderBy = {
+    distance: "distance_miles ASC, pin14 ASC",
+    roof_age: `CASE WHEN ${VALID_ANCHOR_SQL} THEN roof_age_years ELSE NULL END DESC NULLS LAST, distance_miles ASC, pin14 ASC`,
+    open_days: `(${openPermitSql}) DESC NULLS LAST, distance_miles ASC, pin14 ASC`,
+  }[sort];
   const sql = `SELECT *, ${haversineSql(input.lat, input.lon)} AS distance_miles, count(*) OVER () AS total_in_radius
     FROM property WHERE ${where.join(" AND ")} ORDER BY ${orderBy} LIMIT ${input.limit}`;
   const rows = await ds.query(sql, params);
