@@ -1,12 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, writeFile, mkdir, readFile } from "node:fs/promises";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CarReader } from "@ipld/car";
+import { CID } from "multiformats/cid";
 import {
   buildDag,
+  fileDag,
   fullyVerifiedGateways,
+  pinManifest,
   writeCar,
   verify,
   Manifest,
@@ -127,5 +130,49 @@ describe("durability helpers", () => {
       "GET https://api.pinata.cloud/v3/files/public?limit=100",
       "DELETE https://api.pinata.cloud/v3/files/public/1",
     ]);
+  });
+});
+
+describe("manifest pinning", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const bytes = new TextEncoder().encode('{"schema":"cook-il.artifact-manifest.v1"}\n');
+  it("gives a small file a raw-leaf CIDv1 whose digest is the file's sha256", async () => {
+    const { rootCid } = await fileDag(bytes);
+    const cid = CID.parse(rootCid);
+    expect(cid.version).toBe(1);
+    expect(cid.code).toBe(0x55); // raw
+    expect(Buffer.from(cid.multihash.digest).toString("hex")).toBe(
+      createHash("sha256").update(bytes).digest("hex"),
+    );
+  });
+  it("records a pin as ok only when the provider returns the local CID", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "manifest-pin-"));
+    const { rootCid } = await fileDag(bytes);
+    let returned = rootCid;
+    vi.stubGlobal("fetch", (url: string) =>
+      Promise.resolve(
+        url.startsWith("https://api.pinata.cloud/v3/files/public")
+          ? Response.json({ data: { files: [] } })
+          : Response.json({ data: { cid: returned } }),
+      ),
+    );
+    const ok = await pinManifest({
+      runId: "r1",
+      manifestBytes: bytes,
+      carPath: join(dir, "manifest.car"),
+      filebase: null,
+      pinataJwt: "jwt",
+    });
+    expect(ok.cid).toBe(rootCid);
+    expect(ok.pins.map((p) => [p.provider, p.ok])).toEqual([["pinata", true]]);
+    returned = "bafkreiother";
+    const bad = await pinManifest({
+      runId: "r1",
+      manifestBytes: bytes,
+      carPath: join(dir, "manifest.car"),
+      filebase: null,
+      pinataJwt: "jwt",
+    });
+    expect(bad.pins[0]).toMatchObject({ ok: false, detail: "CID mismatch: bafkreiother" });
   });
 });

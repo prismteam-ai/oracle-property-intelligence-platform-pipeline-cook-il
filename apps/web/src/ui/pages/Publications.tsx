@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { ExtLink, Kv, Status, Table } from "../components.js";
-import { fmt, trpc, useAsync } from "../trpc.js";
+import { fmt, manifestIdNote, trpc, useAsync } from "../trpc.js";
 
 /** Gateways run by the pinning providers we upload to; the rest are independent third parties. */
 const PINNING = ["https://gateway.pinata.cloud", "https://ipfs.filebase.io"];
@@ -57,7 +57,7 @@ export function Publications() {
             items={[
               ["run_id", d.run?.run_id ?? id ?? "—"],
               ["root CID", <span data-testid="root-cid">{fmt(d.root_cid)}</span>],
-              ["manifest CID", `${fmt(d.manifest_cid)} (sha256 of manifest.json)`],
+              ["manifest CID", `${fmt(d.manifest_cid)}${manifestIdNote(d.manifest_cid)}`],
               ["manifest schema", fmt(m?.schema)],
               ["created at", fmt(m?.created_at)],
               ["previous root CID", fmt(m?.previous_root_cid ?? null)],

@@ -233,6 +233,109 @@ export async function pinPinata(jwt: string, dir: string, name: string): Promise
   return body.data.cid;
 }
 
+type Pin = Manifest["pins"][number];
+
+/** Single-file UnixFS DAG with the dataset's importer settings (CIDv1, raw leaves, 256 KiB chunks). */
+export async function fileDag(bytes: Uint8Array): Promise<Dag> {
+  const blockstore = new MemoryBlockstore();
+  let cid: CID | undefined;
+  for await (const e of importer([{ content: bytes }], blockstore, {
+    cidVersion: 1,
+    rawLeaves: true,
+    chunker: fixedSize({ chunkSize: 262_144 }),
+    layout: balanced(),
+  }))
+    cid = e.cid;
+  if (!cid) throw new Error("file CID not produced");
+  return { rootCid: cid.toString(), objects: [], blockstore };
+}
+
+/** Upload one file to Pinata (reusing an existing upload with the same name and CID). */
+export async function pinPinataFile(jwt: string, bytes: Uint8Array, name: string): Promise<string> {
+  const headers = { Authorization: `Bearer ${jwt}` };
+  const list = await fetch(
+    `https://api.pinata.cloud/v3/files/public?name=${encodeURIComponent(name)}&limit=100`,
+    { headers },
+  );
+  if (list.ok) {
+    const body = (await list.json()) as {
+      data?: { files?: { name: string | null; cid: string }[] };
+    };
+    const existing = body.data?.files?.find((f) => f.name === name);
+    if (existing) return existing.cid;
+  }
+  const fd = new FormData();
+  fd.append("file", new File([bytes], "manifest.json", { type: "application/json" }));
+  fd.append("network", "public");
+  fd.append("name", name);
+  const r = await fetch("https://uploads.pinata.cloud/v3/files", {
+    method: "POST",
+    headers,
+    body: fd,
+  });
+  const body = (await r.json().catch(() => ({}))) as { data?: { cid?: string }; error?: unknown };
+  if (!r.ok || !body.data?.cid)
+    throw new Error(
+      `Pinata upload failed: ${r.status} ${JSON.stringify(body.error ?? body).slice(0, 200)}`,
+    );
+  return body.data.cid;
+}
+
+/**
+ * Pin a run's manifest.json itself so its identity is a real IPFS CID instead of a sha256 stand-in:
+ * Filebase imports a one-file CAR, Pinata uploads the file. Each pin is ok only when the provider's
+ * CID equals the locally computed one.
+ */
+export async function pinManifest(o: {
+  runId: string;
+  manifestBytes: Uint8Array;
+  carPath: string;
+  filebase: FilebaseConfig | null;
+  pinataJwt: string | null;
+}): Promise<{ cid: string; sha256: string; pins: Pin[] }> {
+  const dag = await fileDag(o.manifestBytes);
+  await writeCar(dag, o.carPath);
+  const pins: Pin[] = [];
+  const attempt = async (provider: string, run: () => Promise<string>, how: string) => {
+    try {
+      const cid = await run();
+      pins.push({
+        provider,
+        cid,
+        at: new Date().toISOString(),
+        ok: cid === dag.rootCid,
+        detail:
+          cid === dag.rootCid ? `${how}, CID matches local manifest CID` : `CID mismatch: ${cid}`,
+      });
+    } catch (e) {
+      pins.push({
+        provider,
+        cid: dag.rootCid,
+        at: new Date().toISOString(),
+        ok: false,
+        detail: String(e).slice(0, 200),
+      });
+    }
+  };
+  if (o.filebase) {
+    const cfg = o.filebase;
+    await attempt(
+      "filebase",
+      () => pinFilebase(cfg, o.carPath, `runs/${o.runId}/manifest.car`),
+      "CAR import",
+    );
+  }
+  if (o.pinataJwt) {
+    const jwt = o.pinataJwt;
+    await attempt(
+      "pinata",
+      () => pinPinataFile(jwt, o.manifestBytes, `manifest-cook-il-${o.runId}`),
+      "file upload",
+    );
+  }
+  return { cid: dag.rootCid, sha256: sha256(o.manifestBytes), pins };
+}
+
 /** Fetch every file object from every gateway and compare size and sha256. */
 export async function verify(opts: {
   runId: string;

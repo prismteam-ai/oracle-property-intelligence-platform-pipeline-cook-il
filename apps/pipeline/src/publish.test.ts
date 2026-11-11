@@ -7,6 +7,7 @@ import { ensureRunSchema } from "./run.js";
 import {
   latestPublishedRun,
   pickRunToPublish,
+  pinPublishedManifests,
   publish,
   sha256Hex,
   verifyPublished,
@@ -54,10 +55,13 @@ describe("publish / verify commands", () => {
     expect(existsSync(join(dataDir, "publications", "r2", "r2.car"))).toBe(true);
     expect(existsSync(join(pubDir, "r2", "r2.car"))).toBe(false);
     expect(r.manifestCid).toBe(sha256Hex(readFileSync(join(pubDir, "r2", "manifest.json"))));
+    // no pinning credentials: the manifest is not pinned, so its sha256 stands in for the CID
     expect(JSON.parse(readFileSync(join(pubDir, "r2", "run.json"), "utf8"))).toEqual({
       run_id: "r2",
       root_cid: r.manifest.root_cid,
       manifest_cid: r.manifestCid,
+      manifest_sha256: r.manifestCid,
+      manifest_pins: [],
       previous_run_id: "r1",
       previous_root_cid: "bafyprev",
     });
@@ -174,4 +178,54 @@ describe("pickRunToPublish", () => {
       skip: "no completed run newer than r2",
     });
   });
+});
+
+describe("pinPublishedManifests", () => {
+  it("records each published manifest's identity on sidecar, run row and history; sha256 when unpinned", async () => {
+    const root = mkdtempSync(join(tmpdir(), "pin-manifest-"));
+    const dataDir = join(root, "data");
+    const pubDir = join(root, "publications");
+    mkdirSync(join(pubDir, "r1"), { recursive: true });
+    const manifest = {
+      schema: "cook-il.artifact-manifest.v1",
+      run_id: "r1",
+      created_at: "2026-11-10T20:00:00Z",
+      root_cid: "bafyroot",
+      car: { name: "r1.car", size: 0, sha256: "", cid: null },
+      previous_run_id: null,
+      previous_root_cid: null,
+      ipns: null,
+      objects: [],
+      pins: [],
+      origins: [],
+    };
+    writeFileSync(join(pubDir, "r1", "manifest.json"), JSON.stringify(manifest));
+    mkdirSync(dataDir, { recursive: true });
+    const db = await Duck.open(join(dataDir, "cook_il.duckdb"));
+    await ensureRunSchema(db);
+    await db.exec(
+      "insert into run (run_id, started_at, status, mode) values ('r1', now(), 'ok', 'full')",
+    );
+    db.close();
+    const sha = sha256Hex(readFileSync(join(pubDir, "r1", "manifest.json")));
+    expect(await pinPublishedManifests({ dataDir, publicationsDir: pubDir, env: {} })).toEqual([
+      { run_id: "r1", manifest_cid: sha, pinned: [] },
+    ]);
+    const db2 = await Duck.open(join(dataDir, "cook_il.duckdb"));
+    expect(await db2.one("select manifest_cid, root_cid from run where run_id = 'r1'")).toEqual({
+      manifest_cid: sha,
+      root_cid: "bafyroot",
+    });
+    db2.close();
+    const history = JSON.parse(readFileSync(join(dataDir, "run-history.json"), "utf8")) as {
+      run_id: string;
+      manifest_cid: string;
+    }[];
+    expect(history.find((r) => r.run_id === "r1")?.manifest_cid).toBe(sha);
+    expect(JSON.parse(readFileSync(join(pubDir, "r1", "run.json"), "utf8"))).toMatchObject({
+      manifest_cid: sha,
+      manifest_sha256: sha,
+      root_cid: "bafyroot",
+    });
+  }, 60_000);
 });

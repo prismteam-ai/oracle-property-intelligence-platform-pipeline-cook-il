@@ -136,6 +136,16 @@ dead_letters JSON, limitations JSON, manifest_cid, root_cid, previous_run_id)`.
 `deltas` holds `{inserted, updated, unchanged}` per contract table. `dead_letter` keeps one
 row per failed page/step. `manifest_cid` / `root_cid` are filled by the IPFS publish step.
 
+Two corrections were applied to the history on 2026-11-11 (data only, recorded here and in each
+affected row's `limitations`):
+
+- The initial bulk load ran as separate `fetch` and `stage` commands, which do not write run rows,
+  so the watermarks pointed at `20261110T195816Z` without a run row. That row was reconstructed
+  from `staged_batch` (the eight `full` batches, 10.4 M rows); fetch times were not recorded.
+- Rows written on the development host before the DuckDB session was pinned to UTC
+  (`20261110T195914Z` … `20261110T221716Z`, plus the bulk batches' `staged_at`) stored local time
+  (UTC+2); they were shifted by −2 h. Run ids, which are UTC, were always correct.
+
 ## Measured full run (2026-11-10, this machine)
 
 - fetch: 10.4M rows / 5.8 GB NDJSON in 8 min (4 in flight per host); 0 failed pages.

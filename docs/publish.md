@@ -54,8 +54,14 @@ run can carry records from the pipeline host and from GitHub Actions (`.github/w
 on demand, commits the record). The web app renders the manifest, pins and every `verification*.json` on
 `/publications/<run_id>` ("verification pending" when none exists yet); the CAR is optional there (the VM keeps it under `data/publications`).
 
-Limitations: IPNS is not used (`ipns: null`); `origins` is empty (no self-hosted node advertises the CID); the
-manifest itself is not pinned, hence the sha256 stand-in for `manifest_cid`.
+**Manifest CID.** After a publication passes the gate, `manifest.json` itself is pinned (Filebase imports a one-file
+CAR, Pinata uploads the file) and `manifest_cid` is its UnixFS CID (CIDv1, raw leaf, same importer settings as the
+dataset), recorded in `run.json` with `manifest_sha256` and the per-provider pins, on the run row and in run history.
+A pin counts only when the provider returns the locally computed CID; with no matching pin `manifest_cid` falls back
+to the sha256 of the manifest bytes and the web labels it as such. `pipeline pin-manifest [--run <run_id>]` applies
+this to already published runs without changing any manifest bytes (runs 1–4 were pinned this way on 2026-11-11).
+
+Limitations: IPNS is not used (`ipns: null`); `origins` is empty (no self-hosted node advertises the CID).
 
 ## Verifier defaults
 

@@ -47,6 +47,14 @@ export const fmt = (v: unknown): string => {
   return JSON.stringify(v);
 };
 
+/** manifest_cid is the manifest's own IPFS CID once pinned; unpinned records carry the manifest's sha256. */
+export const manifestIdNote = (v: string | null | undefined): string =>
+  !v
+    ? ""
+    : /^[0-9a-f]{64}$/.test(v)
+      ? " (SHA-256 of manifest.json; manifest not pinned)"
+      : " (IPFS CID of manifest.json)";
+
 /** Dates before 1900 or after today come from broken source fields; render them flagged, never as facts. */
 export const invalidDate = (d: string | null | undefined): boolean =>
   !!d && (d < "1900-01-01" || d.slice(0, 10) > new Date().toISOString().slice(0, 10));

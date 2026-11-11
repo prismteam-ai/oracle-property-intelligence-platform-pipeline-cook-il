@@ -19,6 +19,7 @@ import { exportRunHistory } from "./run.js";
 import {
   Manifest,
   fullyVerifiedGateways,
+  pinManifest,
   publishRun,
   verify,
   type Verification,
@@ -61,9 +62,90 @@ export const MIN_VERIFIED_GATEWAYS = 2;
 export interface RunSidecar {
   run_id: string;
   root_cid: string;
+  /** UnixFS CID of manifest.json when at least one pin matched it, else its sha256 (manifest not pinned) */
   manifest_cid: string;
+  manifest_sha256?: string;
+  manifest_pins?: Manifest["pins"];
   previous_run_id: string | null;
   previous_root_cid: string | null;
+}
+
+const pinConfig = (env: z.infer<typeof PublishEnv>) => ({
+  filebase:
+    env.FILEBASE_ACCESS_KEY && env.FILEBASE_SECRET_KEY && env.FILEBASE_BUCKET
+      ? {
+          accessKey: env.FILEBASE_ACCESS_KEY,
+          secretKey: env.FILEBASE_SECRET_KEY,
+          bucket: env.FILEBASE_BUCKET,
+        }
+      : null,
+  pinataJwt: env.PINATA_JWT ?? null,
+});
+
+/**
+ * Pin <publicationsDir>/<run_id>/manifest.json itself and write the run.json sidecar. manifest_cid is the
+ * manifest's UnixFS CID when a provider pinned exactly that CID; without any matching pin it stays the
+ * sha256 of the manifest bytes. The manifest bytes are never changed.
+ */
+export async function recordManifestCid(o: {
+  runId: string;
+  dataDir: string;
+  publicationsDir: string;
+  env?: NodeJS.ProcessEnv;
+}): Promise<RunSidecar> {
+  const outDir = join(o.publicationsDir, o.runId);
+  const bytes = readFileSync(join(outDir, "manifest.json"));
+  const manifest = Manifest.parse(JSON.parse(bytes.toString("utf8")));
+  const carDir = join(o.dataDir, "publications", o.runId);
+  mkdirSync(carDir, { recursive: true });
+  const r = await pinManifest({
+    runId: o.runId,
+    manifestBytes: bytes,
+    carPath: join(carDir, "manifest.car"),
+    ...pinConfig(PublishEnv.parse(o.env ?? process.env)),
+  });
+  const sidecar: RunSidecar = {
+    run_id: o.runId,
+    root_cid: manifest.root_cid,
+    manifest_cid: r.pins.some((p) => p.ok) ? r.cid : r.sha256,
+    manifest_sha256: r.sha256,
+    manifest_pins: r.pins,
+    previous_run_id: manifest.previous_run_id,
+    previous_root_cid: manifest.previous_root_cid,
+  };
+  writeFileSync(join(outDir, "run.json"), JSON.stringify(sidecar, null, 2));
+  return sidecar;
+}
+
+/** Give every already published run a pinned manifest CID (sidecars, run rows and run history). */
+export async function pinPublishedManifests(o: {
+  dataDir: string;
+  publicationsDir: string;
+  runIds?: string[];
+  env?: NodeJS.ProcessEnv;
+}): Promise<{ run_id: string; manifest_cid: string; pinned: string[] }[]> {
+  const ids =
+    o.runIds ??
+    (existsSync(o.publicationsDir)
+      ? readdirSync(o.publicationsDir)
+          .filter((d) => existsSync(join(o.publicationsDir, d, "manifest.json")))
+          .sort()
+      : []);
+  const out: RunSidecar[] = [];
+  for (const runId of ids) out.push(await recordManifestCid({ ...o, runId }));
+  await withDb(join(o.dataDir, "cook_il.duckdb"), async (db) => {
+    for (const s of out)
+      await db.exec(
+        "update run set manifest_cid = ?, root_cid = coalesce(root_cid, ?) where run_id = ?",
+        [s.manifest_cid, s.root_cid, s.run_id],
+      );
+    await exportRunHistory(db, o.dataDir);
+  });
+  return out.map((s) => ({
+    run_id: s.run_id,
+    manifest_cid: s.manifest_cid,
+    pinned: (s.manifest_pins ?? []).filter((p) => p.ok).map((p) => p.provider),
+  }));
 }
 
 /** Root CID of a previous run: its run row, else its committed manifest.json (the row may live in another DB copy). */
@@ -122,14 +204,7 @@ export async function publish(o: PublishOpts): Promise<{
       : undefined;
     return { prevId, prev };
   });
-  const filebase =
-    env.FILEBASE_ACCESS_KEY && env.FILEBASE_SECRET_KEY && env.FILEBASE_BUCKET
-      ? {
-          accessKey: env.FILEBASE_ACCESS_KEY,
-          secretKey: env.FILEBASE_SECRET_KEY,
-          bucket: env.FILEBASE_BUCKET,
-        }
-      : null;
+  const { filebase, pinataJwt } = pinConfig(env);
   const verifyOpts = {
     ...(o.gateways ? { gateways: o.gateways } : {}),
     ...(o.timeoutMs !== undefined ? { timeoutMs: o.timeoutMs } : {}),
@@ -143,7 +218,7 @@ export async function publish(o: PublishOpts): Promise<{
     previous: previousRootCid(o.publicationsDir, prev, prevId),
     ...(o.carUrl ? { carReleaseUrl: o.carUrl } : {}),
     filebase,
-    pinataJwt: env.PINATA_JWT ?? null,
+    pinataJwt,
     verifier: o.verifier,
     ...verifyOpts,
   });
@@ -182,16 +257,13 @@ export async function publish(o: PublishOpts): Promise<{
   for (const f of ["manifest.json", "verification.json"])
     copyFileSync(join(pendingDir, f), join(outDir, f));
   rmSync(pendingDir, { recursive: true, force: true });
-  // manifest_cid: sha256 of the committed manifest.json for now (the manifest itself is not pinned yet).
-  const manifestCid = sha256Hex(readFileSync(join(outDir, "manifest.json")));
-  const sidecar: RunSidecar = {
-    run_id: o.runId,
-    root_cid: r.manifest.root_cid,
-    manifest_cid: manifestCid,
-    previous_run_id: r.manifest.previous_run_id,
-    previous_root_cid: r.manifest.previous_root_cid,
-  };
-  writeFileSync(join(outDir, "run.json"), JSON.stringify(sidecar, null, 2));
+  const sidecar = await recordManifestCid({
+    runId: o.runId,
+    dataDir: o.dataDir,
+    publicationsDir: o.publicationsDir,
+    ...(o.env ? { env: o.env } : {}),
+  });
+  const manifestCid = sidecar.manifest_cid;
   await withDb(dbPath, async (db) => {
     await db.exec(
       "update run set root_cid = ?, manifest_cid = ?, previous_run_id = ? where run_id = ?",

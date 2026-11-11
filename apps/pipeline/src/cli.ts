@@ -23,18 +23,24 @@ import { SOURCES, findSource, sourceUrl } from "./sources.js";
 import { stageAll } from "./stage.js";
 import { transform } from "./transform.js";
 import { serve } from "./serve.js";
-import { latestPublishedRun, publish, publishLatest, verifyPublished } from "./publish.js";
+import {
+  latestPublishedRun,
+  pinPublishedManifests,
+  publish,
+  publishLatest,
+  verifyPublished,
+} from "./publish.js";
 import { harvestBbb } from "./enrich/bbb.js";
 import { prune } from "./prune.js";
 
-const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|publish-latest|verify|bbb|prune|export-history> [options]
+const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|publish-latest|pin-manifest|verify|bbb|prune|export-history> [options]
   --incremental       use per-source watermarks (fetch/run)
   --force             publish-latest: publish the newest run even without data changes
   --sample <n>        fetch only the first n rows per source into batch 'sample' (fetch/run)
   --source <system>   restrict to one source (repeatable)
   --data <dir>        data directory (default $DATA_DIR or ./data)
   --as-of <date>      roof-age / open-days as-of date (transform; default today)
-  --run <run_id>      run to publish / verify (verify: default latest under publications/)
+  --run <run_id>      run to publish / verify / pin-manifest (verify: default latest; pin-manifest: default all published)
   --previous <run_id> previous run for the CID chain (publish; default: the run's previous_run_id)
   --car-url <url>     where the CAR is downloadable, e.g. a GitHub Release asset (publish; manifest car.release_url)
   --gateways <a,b,c>  gateway prefixes to verify from (publish/verify; default: the six built-in ones)
@@ -101,6 +107,15 @@ async function main(): Promise<void> {
       keep: Number(values.keep),
       dryRun: values["dry-run"],
       log: log.child({ cmd }),
+    });
+    console.log(JSON.stringify(r));
+    return;
+  }
+  if (cmd === "pin-manifest") {
+    const r = await pinPublishedManifests({
+      dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",
+      publicationsDir,
+      ...(values.run ? { runIds: [values.run] } : {}),
     });
     console.log(JSON.stringify(r));
     return;

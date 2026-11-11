@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Card, ExtLink, FixtureBanner, Kv, Status, Table } from "../components.js";
-import { fmt, fmtTs, trpc, useAsync } from "../trpc.js";
+import { fmt, fmtTs, manifestIdNote, trpc, useAsync } from "../trpc.js";
 import { gatewayKind } from "./Publications.js";
 
 export function RunSummary() {
@@ -108,7 +108,7 @@ export function RunSummary() {
           ],
           [
             "manifest CID",
-            source.manifestCid ? `${source.manifestCid} (sha256 of manifest.json)` : "—",
+            source.manifestCid ? `${source.manifestCid}${manifestIdNote(source.manifestCid)}` : "—",
           ],
           ["synced at (UTC)", fmtTs(source.syncedAt)],
           [

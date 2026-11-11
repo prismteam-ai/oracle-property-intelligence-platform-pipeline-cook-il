@@ -35,7 +35,7 @@ export function gatewayUrls(
   }));
 }
 
-/** manifest_cid is the sha256 of manifest.json until the manifest itself is pinned (docs/publish.md). */
+/** Fallback when no run.json sidecar records the pinned manifest CID: the sha256 of manifest.json (docs/publish.md). */
 export const manifestSha256 = (raw: string): string =>
   createHash("sha256").update(raw).digest("hex");
 
