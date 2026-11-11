@@ -10,6 +10,8 @@ import { expect, it } from "vitest";
 import { openDataset } from "./duck.js";
 import { publishedSnapshot } from "./snapshot.js";
 import { datasetInfo, listRuns } from "../runs.js";
+import { createContext } from "../context.js";
+import type { Env } from "../env.js";
 
 it("serves verified published rows and history while another process holds the ingestion write lock", async () => {
   const root = mkdtempSync(join(tmpdir(), "published-serving-"));
@@ -199,7 +201,21 @@ it("activates a newer publication without a restart, but only once two gateways 
     writeFileSync(
       historyPath,
       JSON.stringify(
-        ids.map((run_id) => ({ run_id, status: "ok", mode: "incremental", deltas: {} })),
+        ids.map((run_id) => ({
+          run_id,
+          started_at: "2026-11-11T00:00:00Z",
+          finished_at: "2026-11-11T00:01:00Z",
+          status: "ok",
+          mode: "incremental",
+          sources: [],
+          counts: {},
+          deltas: {},
+          dead_letters: [],
+          limitations: [],
+          root_cid: `bafy${run_id}`,
+          manifest_cid: null,
+          previous_run_id: null,
+        })),
       ),
     );
   try {
@@ -210,6 +226,8 @@ it("activates a newer publication without a restart, but only once two gateways 
       historyPath,
     });
     expect(ds.origin).toMatchObject({ kind: "parquet", runId: "r1" });
+    const ctx = createContext({ ds, env: {} as Env, pubDirs: [pubs], model: null });
+    expect((await ctx.info()).source).toMatchObject({ runId: "r1", rootCid: "bafyr1" });
 
     await publishRunDir("r2", ["g1"]); // one verified gateway: below the serving gate
     history(["r2", "r1"]);
@@ -225,6 +243,7 @@ it("activates a newer publication without a restart, but only once two gateways 
     expect(await ds.refresh!()).toBe(true);
     expect(ds.origin).toMatchObject({ kind: "parquet", runId: "r3" });
     expect(await ds.query("SELECT pin14 FROM property")).toEqual([{ pin14: "r3" }]);
+    expect((await ctx.info()).source).toMatchObject({ runId: "r3", rootCid: "bafyr3" });
     expect(await ds.refresh!()).toBe(false);
   } finally {
     rmSync(root, { recursive: true, force: true });

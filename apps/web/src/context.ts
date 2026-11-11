@@ -14,12 +14,19 @@ export interface AppContext {
 
 export function createContext(base: Omit<AppContext, "info">): AppContext {
   let cached: Promise<DatasetInfo> | null = null;
+  let cachedFor: number | undefined;
   return {
     ...base,
-    info: () =>
-      (cached ??= datasetInfo(base.ds, base.pubDirs).catch((e) => {
+    info: () => {
+      // The provenance block is per snapshot: recompute after the dataset activated a publication or reloaded history.
+      if (cachedFor !== base.ds.version) {
+        cached = null;
+        cachedFor = base.ds.version;
+      }
+      return (cached ??= datasetInfo(base.ds, base.pubDirs).catch((e) => {
         cached = null;
         throw e;
-      })),
+      }));
+    },
   };
 }

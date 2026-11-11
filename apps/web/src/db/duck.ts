@@ -27,6 +27,8 @@ export interface Dataset {
   close(): Promise<void>;
   /** Published serving: switch to a newer verified publication / reload run history. True when anything changed. */
   refresh?(): Promise<boolean>;
+  /** Increments whenever refresh() changed the snapshot or its run history. */
+  readonly version?: number;
 }
 
 /** Newest `<datasetDir>/<run_id>` directory that is newer than the duckdb file, if any. */
@@ -74,6 +76,7 @@ export async function openDataset(
   const mtime = (p: string): number => (existsSync(p) ? statSync(p).mtimeMs : 0);
   let historyMtime = serving ? mtime(serving.historyPath) : 0;
   let seenNewest = serving ? publishedRunIds(serving.pubDirs)[0] : undefined;
+  let version = 0;
   // One instance per query, closed right after: DuckDB holds a file lock for the lifetime of an
   // instance (even READ_ONLY), and the pipeline in the sibling container needs the exclusive
   // read-write lock on cook_il.duckdb for every run.
@@ -153,7 +156,11 @@ export async function openDataset(
         );
       published = next;
       parquet = next;
+      version++;
       return true;
+    },
+    get version() {
+      return version;
     },
     async query(sql, params = [], timeoutMs = 10_000) {
       const instance = await open();
