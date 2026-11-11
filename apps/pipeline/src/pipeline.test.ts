@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Duck } from "@cook/duck";
-import { estimateRoofAge, geohash6 } from "@cook/shared";
+import { classifyRoofing, estimateRoofAge, geohash6 } from "@cook/shared";
 import pino from "pino";
 import { rawDir } from "./fetch.js";
 import { finishRun, startRun } from "./run.js";
 import { canonicalize } from "./socrata.js";
 import { findSource } from "./sources.js";
 import { readWatermark, stageAll } from "./stage.js";
-import { GEOHASH_MACROS, transform } from "./transform.js";
+import { GEOHASH_MACROS, roofingSql, transform } from "./transform.js";
 
 const log = pino({ level: "silent" });
 const AS_OF = "2026-11-10";
@@ -510,6 +510,47 @@ describe("stage + transform (integration)", () => {
       expect(await db.scalar(`select geohash6(${lat}, ${lon})`)).toBe(geohash6(lat, lon));
     }
     expect(await db.scalar("select geohash6(null, 1)")).toBeNull();
+  });
+
+  it("classifies roofing in SQL exactly like the TS reference", async () => {
+    const descs = [
+      "",
+      "FENCE",
+      "ROOF",
+      "REROOF SFR",
+      "ROOF DECK",
+      "ROOF RECOVER ONLY - NO STRUCTURAL WORK",
+      "INSTALL NEW ROOF ON NEW 12 UNIT BUILDING",
+      "INSTALL A/C CONDENSING UNITS ON EXISTING ROOF",
+      "NEW ROOF STRUCTURE OVER EXISTING OUTDOOR PATIO",
+      "OCCUPIABLE ROOF TERRACES ON GARAGE AND HOME",
+      "NEW ROOF DORMER PER PLANS",
+      "RE-ROOF EAST SIDE OF DORMER",
+      "INTERIOR DEMO ONLY - NO STRUCTURAL PARTITIONS, FOUNDATION, ROOF, EXTERIOR OR GARAGE WORK.",
+      "DECONVERT TO SINGLE FAMILY, NEW ROOF AND NEW PORCH",
+      "INTERIOR BUILDOUT, NEW ROOF, CHANGE USE",
+      "REPAIR REPLACE ROOF AND ROOF DRAINS",
+      "REBUILD PORCH AS PER PLANS (ROOF STAYS)",
+      "GUTTERS ONLY. NO ROOFING WORK.",
+      "TO INSTALL A 5.2KW PV ARRAY ROOF-MOUNTED SYSTEM",
+    ];
+    const ctxs = [
+      { sourceSystem: "cook_assessor_permits", permitType: null },
+      { sourceSystem: "chicago_permits", permitType: "PERMIT - EASY PERMIT PROCESS" },
+      { sourceSystem: "chicago_permits", permitType: "PERMIT \u2013 EXPRESS PERMIT PROGRAM" },
+      { sourceSystem: "chicago_permits", permitType: "PERMIT - RENOVATION/ALTERATION" },
+      { sourceSystem: "chicago_permits", permitType: null },
+    ];
+    const r = roofingSql("d", "s", "t");
+    for (const d of descs) {
+      for (const c of ctxs) {
+        const row = await db.one(
+          `select ${r.isRoofing} as is_roofing, ${r.rule} as roofing_match_rule from (select $1::varchar as d, $2::varchar as s, $3::varchar as t)`,
+          [d, c.sourceSystem, c.permitType],
+        );
+        expect({ d, c, ...row }).toEqual({ d, c, ...classifyRoofing(d, c) });
+      }
+    }
   });
 
   it("records a run row with counts, deltas and limitations", async () => {

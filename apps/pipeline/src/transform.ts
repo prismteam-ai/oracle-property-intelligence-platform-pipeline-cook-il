@@ -6,8 +6,13 @@ import {
   CONTRACT_TABLES,
   MATCH_CONFIDENCE,
   ROOFING_EXCLUDE,
+  ROOFING_EXCLUDED,
+  ROOFING_FAST_TRACK_TYPE,
   ROOFING_INCLUDE,
+  ROOFING_MULTI_SCOPE,
+  ROOFING_NEGATED,
   ROOFING_RULE,
+  ROOFING_RULE_STRICT,
   ROOFING_STRONG,
   NOT_COMPLETED_STATUSES,
   MIN_ROOF_ANCHOR_DATE,
@@ -241,13 +246,7 @@ function propertyBaseSql(runId: string, asOf: string): string {
 function permitSql(runId: string, asOf: string): string[] {
   const cook = findSource("cook_assessor_permits");
   const chi = findSource("chicago_permits");
-  const strongOrNotExcluded = (col: string) =>
-    `(regexp_matches(${col}, ${q(ROOFING_STRONG)}, 'i') or not regexp_matches(${col}, ${q(ROOFING_EXCLUDE)}, 'i'))`;
-  const roofing = (col: string) =>
-    `regexp_matches(${col}, ${q(ROOFING_INCLUDE)}, 'i') and ${strongOrNotExcluded(col)}`;
-  const rule = (col: string) =>
-    `case when regexp_matches(${col}, ${q(ROOFING_INCLUDE)}, 'i') then
-       (case when not ${strongOrNotExcluded(col)} then ${q(`excluded:/${ROOFING_EXCLUDE}/i`)} else ${q(ROOFING_RULE)} end) end`;
+  const roof = roofingSql("coalesce(b.work_description, '')", "b.source_system", "b.permit_type");
   const chiContractor = Array.from({ length: 15 }, (_, i) => i + 1)
     .map(
       (n) =>
@@ -288,7 +287,7 @@ function permitSql(runId: string, asOf: string): string[] {
     `create or replace table permit as
     select b.permit_id, b.source_system, coalesce(b.pin14, pp.pin14, p10.pin14) as pin14, b.address,
       coalesce(b.lat, pp.lat, p10.lat) as lat, coalesce(b.lon, pp.lon, p10.lon) as lon, null::varchar as geohash6,
-      b.permit_type, b.work_description, ${roofing("coalesce(b.work_description, '')")} as is_roofing, ${rule("coalesce(b.work_description, '')")} as roofing_match_rule,
+      b.permit_type, b.work_description, ${roof.isRoofing} as is_roofing, ${roof.rule} as roofing_match_rule,
       b.status, b.status_is_open, b.issued_at, b.applied_at, b.closed_at,
       case when b.status_is_open then date_diff('day', coalesce(b.issued_at, b.applied_at), ${q(asOf)}::date) end as open_days,
       b.applicant_name, b.contractor_name,
@@ -308,6 +307,28 @@ function permitSql(runId: string, asOf: string): string[] {
     `drop table prop_geo`,
     `drop table prop_geo10`,
   ];
+}
+
+/** SQL mirror of classifyRoofing(desc, { sourceSystem, permitType }); `desc` must be non-null. */
+export function roofingSql(
+  desc: string,
+  sourceSystem: string,
+  permitType: string,
+): { isRoofing: string; rule: string } {
+  const re = (pattern: string, col = desc) => `regexp_matches(${col}, ${q(pattern)}, 'i')`;
+  const strict = `(${sourceSystem} = 'chicago_permits' and not ${re(ROOFING_FAST_TRACK_TYPE, `coalesce(${permitType}, '')`)})`;
+  return {
+    isRoofing: `(${re(ROOFING_INCLUDE)} and not ${re(ROOFING_NEGATED)} and case when ${strict}
+      then ${re(ROOFING_STRONG)} and not ${re(ROOFING_MULTI_SCOPE)}
+      else ${re(ROOFING_STRONG)} or not ${re(ROOFING_EXCLUDE)} end)`,
+    rule: `case when not ${re(ROOFING_INCLUDE)} then null
+      when ${re(ROOFING_NEGATED)} then ${q(ROOFING_EXCLUDED.negated)}
+      when ${strict} and not ${re(ROOFING_STRONG)} then ${q(ROOFING_EXCLUDED.notStrong)}
+      when ${strict} and ${re(ROOFING_MULTI_SCOPE)} then ${q(ROOFING_EXCLUDED.multiScope)}
+      when ${strict} then ${q(ROOFING_RULE_STRICT)}
+      when not ${re(ROOFING_STRONG)} and ${re(ROOFING_EXCLUDE)} then ${q(ROOFING_EXCLUDED.exclude)}
+      else ${q(ROOFING_RULE)} end`,
+  };
 }
 
 /** Relationship tables (kit vocabulary): permit -> company edge with its tier confidence; company -> IDFPR license. */
