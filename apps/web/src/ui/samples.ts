@@ -67,4 +67,15 @@ UNION ALL SELECT 'business', count(*) FROM business
 UNION ALL SELECT 'sale', count(*) FROM sale
 UNION ALL SELECT 'run', count(*) FROM run`,
   },
+  {
+    title: "Contractors with BBB ratings (archived evidence)",
+    sql: `SELECT DISTINCT p.pin14, p.address, p.lat, p.lon, p.roof_age_years,
+  c.name AS contractor, c.bbb_rating, c.bbb_state, c.bbb_checked_at, c.bbb_url
+FROM property p
+JOIN permit x ON x.pin14 = p.pin14
+JOIN contractor c ON c.contractor_id = x.contractor_id
+WHERE c.bbb_rating IS NOT NULL AND p.lat IS NOT NULL AND p.lon IS NOT NULL
+ORDER BY p.pin14
+LIMIT 25`,
+  },
 ];

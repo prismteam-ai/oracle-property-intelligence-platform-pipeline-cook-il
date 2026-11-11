@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AgentAnswer } from "../AgentAnswer.js";
 import { trpc } from "../trpc.js";
 
 export const AGENT_PROMPTS = [
@@ -62,7 +63,7 @@ export function Agent() {
 
   return (
     <>
-      <h1>Agent (gpt-4.1-mini via Vercel AI SDK, tools over the dataset)</h1>
+      <h1>Noctowl — property and permit assistant</h1>
       <p className="muted">
         The agent geocodes places, runs radius / roof-age / open-permit searches and read-only SQL,
         and must cite pin14 / permit ids with source URLs, state assumptions and name missing data.
@@ -94,7 +95,7 @@ export function Agent() {
             </div>
           ) : (
             <div className="msg" key={i} data-testid="msg-agent">
-              {m.answer.answer}
+              <AgentAnswer text={m.answer.answer} />
               <div className="muted" style={{ marginTop: 8 }}>
                 model {m.answer.model} · tools:{" "}
                 {m.answer.steps.map((s) => `${s.tool}(${JSON.stringify(s.args)})`).join(" → ") ||
