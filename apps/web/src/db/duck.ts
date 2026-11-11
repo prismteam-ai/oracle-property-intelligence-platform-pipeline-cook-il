@@ -1,4 +1,5 @@
 import { DuckDBInstance, type DuckDBConnection, type DuckDBValue } from "@duckdb/node-api";
+import { legacySourceUrlSql } from "@cook/shared";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { publishedSnapshot } from "./snapshot.js";
@@ -132,6 +133,26 @@ export async function openDataset(
       const conn: DuckDBConnection = await instance.connect();
       let timer: NodeJS.Timeout | undefined;
       try {
+        const columns = (
+          await conn.runAndReadAll(
+            `SELECT table_catalog, table_name FROM information_schema.columns WHERE table_schema = 'main'
+           AND (column_name IN ('source_system', 'source_record_key', 'source_url')
+             OR (table_name = 'contractor_has_license' AND column_name IN ('authority', 'license_number')))
+           GROUP BY table_catalog, table_name HAVING count(*) = 3`,
+          )
+        ).getRowObjectsJson() as { table_catalog: string; table_name: string }[];
+        for (const { table_catalog, table_name } of columns) {
+          if (!TABLES.includes(table_name as (typeof TABLES)[number])) continue;
+          const repair =
+            table_name === "contractor_has_license"
+              ? legacySourceUrlSql(
+                  "case when authority = 'IDFPR' then 'idfpr_roofing' end",
+                  "license_number",
+                )
+              : legacySourceUrlSql();
+          await conn.run(`CREATE TEMP VIEW ${table_name} AS SELECT * REPLACE (${repair} AS source_url),
+            source_url AS source_url_original FROM "${table_catalog.replace(/"/g, '""')}".main.${table_name}`);
+        }
         await lockdown(conn, parquet?.dir);
         const run = conn.runAndReadAll(sql, params).then((r) => r.getRowObjectsJson() as Row[]);
         const timeout = new Promise<never>((_, reject) => {

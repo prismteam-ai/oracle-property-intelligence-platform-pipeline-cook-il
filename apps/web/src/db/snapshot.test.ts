@@ -21,7 +21,9 @@ it("serves verified published rows and history while another process holds the i
   mkdirSync(join(pubs, "r1"), { recursive: true });
   const writer = await DuckDBInstance.create(dbPath);
   const conn = await writer.connect();
-  await conn.run("CREATE TABLE property(pin14 varchar); INSERT INTO property VALUES ('published')");
+  await conn.run(`CREATE TABLE property(pin14 varchar, source_system varchar, source_record_key varchar, source_url varchar);
+    INSERT INTO property VALUES ('10253260360000', 'cook_parcels', '10253260360000|2026',
+    'https://datacatalog.cookcountyil.gov/resource/pabr-t5kh?10253260360000|2026')`);
   const file = join(runDir, "property", "data_0.parquet");
   await conn.run(`COPY property TO '${file}' (FORMAT parquet)`);
   conn.closeSync();
@@ -94,7 +96,18 @@ it("serves verified published rows and history while another process holds the i
       /lock/i,
     );
     const ds = await openDataset(dbPath, datasets, { pubDirs: [pubs], historyPath });
-    expect(await ds.query("SELECT * FROM property")).toEqual([{ pin14: "published" }]);
+    expect(await ds.query("SELECT pin14, source_url, source_url_original FROM property")).toEqual([
+      {
+        pin14: "10253260360000",
+        source_url:
+          "https://datacatalog.cookcountyil.gov/resource/pabr-t5kh.json?pin=10253260360000&year=2026",
+        source_url_original:
+          "https://datacatalog.cookcountyil.gov/resource/pabr-t5kh?10253260360000|2026",
+      },
+    ]);
+    expect(readFileSync(file)).toEqual(bytes);
+    expect(JSON.parse(readFileSync(join(pubs, "r1", "manifest.json"), "utf8"))).toEqual(manifest);
+    expect((await publishedSnapshot(datasets, [pubs], historyPath))?.runId).toBe("r1");
     expect((await listRuns(ds, [pubs])).map((r) => r.run_id)).toEqual(["r2", "r1"]);
     expect((await datasetInfo(ds, [pubs])).source).toMatchObject({
       runId: "r1",

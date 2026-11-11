@@ -113,7 +113,9 @@ export async function tableSchema(
   ds: Dataset,
 ): Promise<{ name: string; columns: { name: string; type: string }[] }[]> {
   const rows = await ds.query(
-    `SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'main' ORDER BY table_name, ordinal_position`,
+    `SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'main'
+     QUALIFY row_number() OVER (PARTITION BY table_name, column_name ORDER BY (table_catalog = 'temp') DESC) = 1
+     ORDER BY table_name, ordinal_position`,
   );
   const tables = new Map<string, { name: string; type: string }[]>();
   for (const r of rows) {

@@ -10,10 +10,12 @@ import {
   ROOFING_RULE,
   SQL_NORMALIZE_NAME,
   SQL_STRIP_SUFFIXES,
+  sourceRecordUrlSql,
   type Delta,
+  type Source,
 } from "@cook/shared";
 import type { Logger } from "./log.js";
-import { findSource, sourceUrl } from "./sources.js";
+import { findSource } from "./sources.js";
 
 const q = quoteString;
 const COOK_ZIP3 = ["600", "601", "602", "603", "604", "605", "606", "607", "608"];
@@ -122,14 +124,21 @@ async function reconcile(db: Duck, t: string, pk: string): Promise<Delta> {
 }
 
 const prov = (
-  system: string,
-  url: string,
+  source: Source,
   runId: string,
   keyExpr = "source_record_key",
   hashExpr = "source_record_hash",
+  prefix = "",
 ) =>
-  `${q(system)} as source_system, ${keyExpr} as source_record_key, ${hashExpr} as source_record_hash,
-   ${q(url)} || '?' || ${keyExpr} as source_url, now()::timestamp as ingested_at, ${q(runId)} as run_id`;
+  `${q(source.system)} as source_system, ${keyExpr} as source_record_key, ${hashExpr} as source_record_hash,
+   ${recordUrl(source, keyExpr, prefix)} as source_url, now()::timestamp as ingested_at, ${q(runId)} as run_id`;
+
+const recordUrl = (s: Source, key = "source_record_key", prefix = "") =>
+  sourceRecordUrlSql(
+    s,
+    key,
+    s.keyFields.map((f) => `nullif(${prefix}${f}, '') is null`).join(" or "),
+  );
 
 const asDate = (col: string) => `try_cast(substr(${col}, 1, 10) as date)`;
 const usDate = (col: string) => `try_cast(try_strptime(${col}, '%m/%d/%Y') as date)`;
@@ -141,7 +150,7 @@ function saleSql(runId: string): string {
     select 'cook_sales:' || source_record_key as sale_id, ${pin14("pin")} as pin14,
       ${asDate("sale_date")} as sale_date, try_cast(try_cast(sale_price as double) as bigint) as sale_price,
       deed_type, buyer_name, seller_name, doc_no,
-      ${prov(s.system, sourceUrl(s), runId)}
+      ${prov(s, runId)}
     from raw_cook_sales where length(regexp_replace(pin, '[^0-9]', '', 'g')) = 14`;
 }
 
@@ -159,7 +168,7 @@ function contractorSql(runId: string, hasBbb: boolean): string {
       case ever_disciplined when 'Y' then true when 'N' then false else null end as ever_disciplined,
       ${bbb},
       nullif(trim(businessdba), '') as dba, ${usDate("expiration_date")} as expires_at,
-      ${prov(s.system, sourceUrl(s), runId)}
+      ${prov(s, runId)}
     from raw_idfpr_roofing r
     ${hasBbb ? "left join bbb_lookup b on b.contractor_id = 'idfpr:' || coalesce(r.license_number, 'row:' || r.source_record_key)" : ""}`;
 }
@@ -185,7 +194,7 @@ function businessSql(runId: string): string {
     select source_record_key as license_id, legal_name, doing_business_as_name as dba, address, city, zip_code as zip,
       try_cast(latitude as double) as lat, try_cast(longitude as double) as lon, null::varchar as geohash6,
       license_description, license_status as status, ${asDate("date_issued")} as issued_at, ${asDate("expiration_date")} as expires_at,
-      ${prov(s.system, sourceUrl(s), runId)}
+      ${prov(s, runId)}
     from raw_chicago_business_licenses`;
 }
 
@@ -215,11 +224,11 @@ function propertyBaseSql(runId: string, asOf: string): string {
       case when yb.y between 1800 and year(${d}) then 'low' end as roof_age_confidence,
       null::date as roof_age_anchor_date,
       ${prov(
-        s.system,
-        sourceUrl(s),
+        s,
         runId,
         "p.source_record_key",
         "sha256(p.source_record_hash || coalesce(c.source_record_hash, '') || coalesce(a.source_record_hash, '') || coalesce(s.source_record_hash, ''))",
+        "p.",
       )}
     from p left join c on c.pin = p.pin left join a on a.pin = p.pin left join s on s.pin14 = ${pin14("p.pin")},
       lateral (select try_cast(try_cast(c.char_yrblt as double) as integer) as y) yb
@@ -252,7 +261,7 @@ function permitSql(runId: string, asOf: string): string[] {
         status, ${openCook} as status_is_open,
         ${asDate("date_issued")} as issued_at, null::date as applied_at, null::date as closed_at,
         nullif(trim(applicant_name), '') as applicant_name, nullif(trim(applicant_name), '') as contractor_name,
-        municipality, false as is_new_construction, source_record_key, source_record_hash, ${q(sourceUrl(cook))} as src_url
+        municipality, false as is_new_construction, source_record_key, source_record_hash, ${recordUrl(cook)} as src_url
       from raw_cook_assessor_permits
       union all
       select 'chicago_permits:' || coalesce(nullif(permit_, ''), source_record_key), 'chicago_permits',
@@ -262,7 +271,7 @@ function permitSql(runId: string, asOf: string): string[] {
         permit_status, ${openChi},
         ${asDate("issue_date")}, ${asDate("application_start_date")}, null::date,
         nullif(trim(contact_1_name), ''), coalesce(${chiContractor}),
-        'CITY OF CHICAGO', permit_type = 'PERMIT - NEW CONSTRUCTION', source_record_key, source_record_hash, ${q(sourceUrl(chi))}
+        'CITY OF CHICAGO', permit_type = 'PERMIT - NEW CONSTRUCTION', source_record_key, source_record_hash, ${recordUrl(chi)}
       from raw_chicago_permits
       qualify row_number() over (partition by coalesce(nullif(permit_, ''), source_record_key) order by updated_at desc nulls last) = 1`,
     `alter table permit_base add column name_key1 varchar`,
@@ -282,7 +291,7 @@ function permitSql(runId: string, asOf: string): string[] {
       case when i1.contractor_id is not null then 'exact_normalized' when i2.contractor_id is not null then 'suffix_stripped' when i3.contractor_id is not null then 'dba' end as contractor_match_tier,
       case when i1.contractor_id is not null then b.name_key1 when i2.contractor_id is not null then b.name_key2 when i3.contractor_id is not null then b.name_key1 end as contractor_match_key,
       b.municipality, b.is_new_construction,
-      b.source_system as source_system, b.source_record_key, b.source_record_hash, b.src_url || '?' || b.source_record_key as source_url,
+      b.source_system as source_system, b.source_record_key, b.source_record_hash, b.src_url as source_url,
       now()::timestamp as ingested_at, ${q(runId)} as run_id
     from permit_base b
     left join prop_geo pp on pp.pin14 = b.pin14

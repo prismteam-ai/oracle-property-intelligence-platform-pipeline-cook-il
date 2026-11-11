@@ -10,10 +10,31 @@ import { haversineMiles } from "./geo.js";
 import { SAMPLE_QUERIES } from "../ui/samples.js";
 
 let ds: Dataset;
+let legacyPin: string;
 beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), "cook-il-test-"));
   const db = join(dir, "cook_il.duckdb");
   await makeFixture(db, join(dir, "publications"));
+  const writer = await DuckDBInstance.create(db);
+  const conn = await writer.connect();
+  const [target] = (
+    await conn.runAndReadAll(
+      "SELECT pin14 FROM permit WHERE contractor_id IS NOT NULL AND pin14 IS NOT NULL LIMIT 1",
+    )
+  ).getRowObjectsJson();
+  legacyPin = target!.pin14 as string;
+  await conn.run(
+    `UPDATE property SET source_system = 'cook_parcels', source_record_key = pin14 || '|2026',
+    source_url = 'https://datacatalog.cookcountyil.gov/resource/pabr-t5kh?' || pin14 || '|2026' WHERE pin14 = ?`,
+    [legacyPin],
+  );
+  await conn.run(
+    `UPDATE permit SET source_system = 'chicago_permits', source_record_key = '3143020',
+    source_url = 'https://data.cityofchicago.org/resource/ydr8-5enu?3143020' WHERE pin14 = ?`,
+    [legacyPin],
+  );
+  conn.closeSync();
+  writer.closeSync();
   ds = await openDataset(db, join(dir, "dataset"));
 });
 afterAll(async () => ds.close());
@@ -163,6 +184,24 @@ describe("findProperties", () => {
     const p = await getProperty(ds, String(row?.pin14));
     expect(p?.permits.some((x) => x.contractor !== null)).toBe(true);
     expect(await getProperty(ds, "00000000000000")).toBeNull();
+  });
+  it("typed property and nested permit responses retain stored provenance alongside repaired citations", async () => {
+    const p = await getProperty(ds, legacyPin);
+    expect(p?.source_url).toBe(
+      `https://datacatalog.cookcountyil.gov/resource/pabr-t5kh.json?pin=${legacyPin}&year=2026`,
+    );
+    expect(p?.source_url_original).toBe(
+      `https://datacatalog.cookcountyil.gov/resource/pabr-t5kh?${legacyPin}|2026`,
+    );
+    expect(p?.permits.length).toBeGreaterThan(0);
+    for (const permit of p!.permits) {
+      expect(permit.source_url).toBe(
+        "https://data.cityofchicago.org/resource/ydr8-5enu.json?id=3143020",
+      );
+      expect(permit.source_url_original).toBe(
+        "https://data.cityofchicago.org/resource/ydr8-5enu?3143020",
+      );
+    }
   });
   it("tableSchema lists the contract tables", async () => {
     const names = (await tableSchema(ds)).map((t) => t.name);

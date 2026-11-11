@@ -332,6 +332,9 @@ describe("stage + transform (integration)", () => {
     expect(p1["last_sale_date"]).toBe("2015-03-01");
     expect(p1["last_sale_price"]).toBe(250000);
     expect(p1["geohash6"]).toBe(geohash6(42.15, -88.13));
+    expect(p1["source_url"]).toBe(
+      `https://datacatalog.cookcountyil.gov/resource/pabr-t5kh.json?pin=${P1}&year=2026`,
+    );
     // SQL mirrors the TS estimator: closed reroof 2018 wins; the 2024 open permit does not reset.
     const ts = estimateRoofAge(
       1990,
@@ -357,6 +360,7 @@ describe("stage + transform (integration)", () => {
     const byId = Object.fromEntries(permits.map((p) => [p["permit_id"] as string, p]));
     const c1 = byId["chicago_permits:100000001"]!;
     expect(c1["pin14"]).toBe(P2);
+    expect(c1["source_url"]).toBe("https://data.cityofchicago.org/resource/ydr8-5enu.json?id=c1");
     expect(c1["lat"]).toBe(41.9); // geocoded from parcel centroid
     expect(c1["is_roofing"]).toBe(true);
     expect(c1["status_is_open"]).toBe(false);
@@ -372,6 +376,9 @@ describe("stage + transform (integration)", () => {
     expect(byId["chicago_permits:100000003"]!["status_is_open"]).toBe(false);
     const a1 = byId["cook_assessor_permits:a1"]!;
     expect(a1["contractor_id"]).toBe("idfpr:104000001");
+    expect(a1["source_url"]).toBe(
+      "https://datacatalog.cookcountyil.gov/resource/6yjf-dfxs.json?row_id=a1",
+    );
     expect(a1["contractor_match_tier"]).toBe("exact_normalized");
     expect(a1["lat"]).toBe(42.15);
     expect(a1["geohash6"]).toBe(geohash6(42.15, -88.13));
@@ -384,6 +391,19 @@ describe("stage + transform (integration)", () => {
     ).map((r) => r.contractor_id);
     expect(ids).toContain("idfpr:104000001");
     expect(ids.some((i) => i.startsWith("idfpr:row:"))).toBe(true);
+    const fallback = (await db.one(
+      "select source_url, source_record_key from contractor where license_number = ''",
+    ))!;
+    expect(new URL(String(fallback["source_url"])).searchParams.get("$where")).toBe(
+      `:id='${String(fallback["source_record_key"])}'`,
+    );
+    expect(await db.scalar("select source_url from sale where sale_id = 'cook_sales:s1'")).toBe(
+      "https://datacatalog.cookcountyil.gov/resource/wvhk-k5uv.json?row_id=s1",
+    );
+    const business = (await db.one("select source_url, source_record_key from business"))!;
+    expect(new URL(String(business["source_url"])).searchParams.get("id")).toBe(
+      business["source_record_key"],
+    );
     expect(await db.scalar("select bbb_state from contractor limit 1")).toBe("unknown");
 
     const edges = await db.query<Record<string, unknown>>(
@@ -409,6 +429,7 @@ describe("stage + transform (integration)", () => {
       contractor_id: "idfpr:104000001",
       authority: "IDFPR",
       license_status: "ACTIVE",
+      source_url: "https://data.illinois.gov/resource/pzzh-kp68.json?license_number=104000001",
     });
 
     const dirs = readdirSync(join(dataDir, "dataset", "run1"));

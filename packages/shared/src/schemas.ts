@@ -7,6 +7,8 @@ const provenance = {
   source_record_key: z.string(),
   source_record_hash: z.string().length(64),
   source_url: z.string(),
+  /** Stored provenance before read-side URL repair; absent in published contract files. */
+  source_url_original: z.string().nullable().optional(),
   ingested_at: timestamp,
   run_id: z.string(),
 };
@@ -122,6 +124,7 @@ export const ContractorHasLicense = z.object({
   license_status: z.string().nullable(),
   authority: z.literal("IDFPR"),
   source_url: z.string(),
+  source_url_original: z.string().nullable().optional(),
   run_id: z.string(),
 });
 
