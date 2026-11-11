@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Duck } from "@cook/duck";
 import { ensureRunSchema } from "./run.js";
-import { latestPublishedRun, publish, sha256Hex, verifyPublished } from "./publish.js";
+import {
+  latestPublishedRun,
+  pickRunToPublish,
+  publish,
+  sha256Hex,
+  verifyPublished,
+} from "./publish.js";
 
 const DEAD = ["http://127.0.0.1:9/ipfs/"];
 
@@ -34,6 +40,8 @@ describe("publish / verify commands", () => {
       gateways: DEAD,
       timeoutMs: 500,
       retries: 0,
+      minPins: 0,
+      minVerifiedGateways: 0,
     });
     expect(r.manifest.previous_root_cid).toBe("bafyprev");
     expect(r.manifest.pins.map((p) => [p.provider, p.ok])).toEqual([
@@ -90,6 +98,8 @@ describe("publish / verify commands", () => {
       gateways: DEAD,
       timeoutMs: 500,
       retries: 0,
+      minPins: 0,
+      minVerifiedGateways: 0,
     });
     expect(r3.manifest.previous_run_id).toBe("r2");
     expect(r3.manifest.previous_root_cid).toBe(r.manifest.root_cid);
@@ -101,4 +111,67 @@ describe("publish / verify commands", () => {
     db4.close();
     expect(row3?.previous_run_id).toBe("r2");
   }, 60_000);
+
+  it("refuses to publish below the two-pin / two-gateway gate and leaves the run unpublished", async () => {
+    const root = mkdtempSync(join(tmpdir(), "pub-gate-"));
+    const dataDir = join(root, "data");
+    const pubDir = join(root, "publications");
+    mkdirSync(join(dataDir, "dataset", "r1", "property"), { recursive: true });
+    writeFileSync(join(dataDir, "dataset", "r1", "property", "part-0000.parquet"), "bytes");
+    const db = await Duck.open(join(dataDir, "cook_il.duckdb"));
+    await ensureRunSchema(db);
+    await db.exec(
+      "insert into run (run_id, started_at, status, mode) values ('r1', now(), 'ok', 'full')",
+    );
+    db.close();
+    await expect(
+      publish({
+        runId: "r1",
+        dataDir,
+        publicationsDir: pubDir,
+        verifier: "test",
+        env: {},
+        gateways: DEAD,
+        timeoutMs: 500,
+        retries: 0,
+        verifyAttempts: 1,
+      }),
+    ).rejects.toThrow(/publication gate failed: 0\/2 pins .* 0\/2 fully verified gateways/);
+    expect(existsSync(join(pubDir, "r1", "manifest.json"))).toBe(false);
+    expect(latestPublishedRun(pubDir)).toBeUndefined();
+    expect(existsSync(join(dataDir, "publications", "r1", "pending", "rejected.json"))).toBe(true);
+    const db2 = await Duck.open(join(dataDir, "cook_il.duckdb"));
+    const row = await db2.one<{ root_cid: string | null }>(
+      "select root_cid from run where run_id = 'r1'",
+    );
+    db2.close();
+    expect(row?.root_cid).toBeNull();
+  }, 60_000);
+});
+
+describe("pickRunToPublish", () => {
+  const changed = { property: { inserted: 0, updated: 3, unchanged: 7 } };
+  const same = { property: { inserted: 0, updated: 0, unchanged: 10 } };
+  const all = () => true;
+  it("publishes the newest run once any run since the last publication changed data", () => {
+    const history = [
+      { run_id: "r1", status: "ok", deltas: changed },
+      { run_id: "r2", status: "ok", deltas: JSON.stringify(changed) },
+      { run_id: "r3", status: "ok", deltas: same },
+      { run_id: "r4", status: "failed", deltas: changed },
+    ];
+    expect(pickRunToPublish(history, "r1", all)).toMatchObject({ runId: "r3" });
+    expect(pickRunToPublish(history, "r1", (id) => id !== "r3")).toMatchObject({ runId: "r2" });
+  });
+  it("skips unchanged refreshes unless forced", () => {
+    const history = [
+      { run_id: "r1", status: "ok", deltas: changed },
+      { run_id: "r2", status: "ok", deltas: same },
+    ];
+    expect(pickRunToPublish(history, "r1", all)).toEqual({ skip: "no data changes since r1" });
+    expect(pickRunToPublish(history, "r1", all, true)).toEqual({ runId: "r2", reason: "forced" });
+    expect(pickRunToPublish(history, "r2", all)).toEqual({
+      skip: "no completed run newer than r2",
+    });
+  });
 });

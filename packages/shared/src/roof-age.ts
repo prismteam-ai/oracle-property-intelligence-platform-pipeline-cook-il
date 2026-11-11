@@ -5,10 +5,25 @@ export interface RoofPermitEvidence {
   is_roofing: boolean;
   is_new_construction?: boolean;
   status_is_open: boolean;
+  /** source status; cancelled/expired/revoked permits never anchor a roof age */
+  status?: string | null;
   /** terminal date: closed_at when present, else issued_at. YYYY-MM-DD */
   closed_at: string | null;
   issued_at: string | null;
 }
+
+/** Closed-but-not-completed statuses: the work may never have happened. */
+export const NOT_COMPLETED_STATUSES = [
+  "CANCELLED",
+  "CANCELED",
+  "EXPIRED",
+  "REVOKED",
+  "WITHDRAWN",
+  "VOID",
+  "DENIED",
+] as const;
+/** Anchors before this date are source-data errors (e.g. a 1720 "reroof"), quarantined like future dates. */
+export const MIN_ROOF_ANCHOR_DATE = "1900-01-01";
 
 export interface RoofAgeEstimate {
   roof_age_years: number | null;
@@ -45,7 +60,8 @@ function wholeYears(anchor: string, asOf: string): number {
  * Kit contract: latest completed reroof permit terminal date -> high; completed new-construction
  * permit -> medium; year built -> low. Open permits never reset age. Dates are never synthesized:
  * a year-built anchor has no anchor date and calendar-year precision. Future-dated anchors are
- * ignored as impossible.
+ * ignored as impossible; so are cancelled/expired/revoked permits (no proof the work was done) and
+ * anchors before 1900 or before the year built (quarantined source errors).
  */
 export function estimateRoofAge(
   yearBuilt: number | null,
@@ -53,12 +69,25 @@ export function estimateRoofAge(
   asOf: string,
 ): RoofAgeEstimate {
   const asOfYear = Number(asOf.slice(0, 4));
-  const completed = permits.filter((p) => !p.status_is_open && anchorDate(p) !== null);
+  const completed = permits.filter(
+    (p) =>
+      !p.status_is_open &&
+      anchorDate(p) !== null &&
+      !(NOT_COMPLETED_STATUSES as readonly string[]).includes(
+        (p.status ?? "").trim().toUpperCase(),
+      ),
+  );
+  const plausible = (d: string): boolean =>
+    d >= MIN_ROOF_ANCHOR_DATE &&
+    (yearBuilt === null ||
+      yearBuilt < 1800 ||
+      yearBuilt > asOfYear ||
+      Number(d.slice(0, 4)) >= yearBuilt);
   const pick = (pred: (p: RoofPermitEvidence) => boolean): string | null =>
     completed
       .filter(pred)
       .map(anchorDate)
-      .filter((d): d is string => d !== null && d <= asOf)
+      .filter((d): d is string => d !== null && d <= asOf && plausible(d))
       .sort()
       .at(-1) ?? null;
 

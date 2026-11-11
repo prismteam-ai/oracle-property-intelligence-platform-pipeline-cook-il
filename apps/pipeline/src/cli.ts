@@ -23,12 +23,13 @@ import { SOURCES, findSource, sourceUrl } from "./sources.js";
 import { stageAll } from "./stage.js";
 import { transform } from "./transform.js";
 import { serve } from "./serve.js";
-import { latestPublishedRun, publish, verifyPublished } from "./publish.js";
+import { latestPublishedRun, publish, publishLatest, verifyPublished } from "./publish.js";
 import { harvestBbb } from "./enrich/bbb.js";
 import { prune } from "./prune.js";
 
-const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|verify|bbb|prune|export-history> [options]
+const USAGE = `pipeline <discover|fetch|stage|transform|run|serve|publish|publish-latest|verify|bbb|prune|export-history> [options]
   --incremental       use per-source watermarks (fetch/run)
+  --force             publish-latest: publish the newest run even without data changes
   --sample <n>        fetch only the first n rows per source into batch 'sample' (fetch/run)
   --source <system>   restrict to one source (repeatable)
   --data <dir>        data directory (default $DATA_DIR or ./data)
@@ -70,6 +71,7 @@ async function main(): Promise<void> {
       publications: { type: "string" },
       keep: { type: "string", default: "2" },
       "dry-run": { type: "boolean", default: false },
+      force: { type: "boolean", default: false },
       limit: { type: "string", default: "150" },
       "min-permits": { type: "string", default: "1" },
       help: { type: "boolean", short: "h", default: false },
@@ -103,7 +105,7 @@ async function main(): Promise<void> {
     console.log(JSON.stringify(r));
     return;
   }
-  if (cmd === "publish" || cmd === "verify") {
+  if (cmd === "publish" || cmd === "verify" || cmd === "publish-latest") {
     // no Socrata credentials needed; pin credentials are optional (see publish.ts)
     const gateways = values.gateways
       ? {
@@ -113,7 +115,16 @@ async function main(): Promise<void> {
             .filter(Boolean),
         }
       : {};
-    if (cmd === "publish") {
+    if (cmd === "publish-latest") {
+      const r = await publishLatest({
+        dataDir: values.data ?? process.env["DATA_DIR"] ?? "data",
+        publicationsDir,
+        verifier: values.verifier,
+        force: values.force,
+        ...gateways,
+      });
+      console.log(JSON.stringify(r));
+    } else if (cmd === "publish") {
       if (!values.run) throw new Error("publish needs --run <run_id>");
       const r = await publish({
         runId: values.run,

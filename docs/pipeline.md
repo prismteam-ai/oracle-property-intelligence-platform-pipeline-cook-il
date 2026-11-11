@@ -31,9 +31,24 @@ docker compose up -d            # web (port 8080, /health, /build.json) + pipeli
 docker compose run --rm pipeline node apps/pipeline/dist/cli.js run   # one-off full run
 ```
 
-The `pipeline` service loops `run --incremental` every 6 h; both services share `./data`
-as a volume and read `.env` via `env_file`. The `web` command is a placeholder until
-`apps/web` lands (it serves `/health` and `/build.json` from the pipeline CLI).
+The `pipeline` service loops `run --incremental` every 6 h; the `publisher` service runs
+`publish-latest` every hour, independently of ingestion; all services share `./data` as a volume
+and read `.env` via `env_file`.
+
+Ingestion and publication are independent jobs (the same split as a per-source ingest → build →
+publish workflow):
+
+- **Ingest (≈2–3 min).** Each source reads its own watermark and fetches concurrently; a failing
+  source becomes a dead letter for that run and the other sources still stage and transform.
+  A source with no rows newer than its `:updated_at` watermark records `rows_fetched: 0` (the
+  Cook Assessor datasets refresh monthly, Chicago permits roughly daily).
+- **Publish (when data changed).** `publish-latest` publishes the newest completed run only if some
+  run since the last publication inserted or updated rows; unchanged refreshes never re-upload an
+  identical snapshot (`--force` overrides). It holds the DuckDB write lock only for two short
+  updates, so a slow upload or gateway check never delays ingestion.
+- **Activate (≤1 min).** The web re-checks publications and `run-history.json` every minute and
+  switches to a newer publication after its integrity check, without a restart. The `web` command is a placeholder until
+  `apps/web` lands (it serves `/health` and `/build.json` from the pipeline CLI).
 
 ## Steps
 

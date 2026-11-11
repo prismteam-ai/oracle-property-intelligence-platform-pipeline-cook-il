@@ -66,4 +66,21 @@ describe("estimateRoofAge", () => {
     expect(estimateRoofAge(2040, [], asOf).roof_age_basis).toBeNull();
     expect(estimateRoofAge(0, [], asOf).roof_age_basis).toBeNull();
   });
+  it("never anchors on cancelled, expired or revoked permits", () => {
+    for (const status of ["CANCELLED", "expired", "REVOKED"]) {
+      const r = estimateRoofAge(1990, [{ ...closedReroof("2020-01-01"), status }], asOf);
+      expect(r.roof_age_basis).toBe("year_built");
+    }
+    expect(
+      estimateRoofAge(1990, [{ ...closedReroof("2020-01-01"), status: "COMPLETE" }], asOf)
+        .roof_age_anchor_date,
+    ).toBe("2020-01-01");
+  });
+  it("quarantines anchors before 1900 or before the year built", () => {
+    // Slowking r4: PIN 29091080860000 showed a 306-year reroof age anchored on 1720-07-01.
+    expect(estimateRoofAge(null, [closedReroof("1720-07-01")], asOf).roof_age_basis).toBeNull();
+    expect(estimateRoofAge(1995, [closedReroof("1990-04-01")], asOf).roof_age_basis).toBe(
+      "year_built",
+    );
+  });
 });

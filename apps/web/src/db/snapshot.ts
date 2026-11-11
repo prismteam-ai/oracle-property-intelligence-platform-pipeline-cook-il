@@ -11,6 +11,9 @@ export interface PublishedSnapshot {
   files: string[];
 }
 
+/** Serving gate: at least two gateways returned every manifest object intact (mirrors the publish gate). */
+export const MIN_VERIFIED_GATEWAYS = 2;
+
 /** Validate local readback against the published manifest before serving any CID claim. */
 export async function publishedSnapshot(
   datasetDir: string,
@@ -21,14 +24,16 @@ export async function publishedSnapshot(
     const pub = getPublication(pubDirs, runId);
     const dir = resolve(datasetDir, runId);
     if (!pub.manifest || !existsSync(join(dir, "property"))) continue;
-    if (
-      !pub.verifications.some(
-        (v) =>
-          v.data.root_cid === pub.manifest?.root_cid &&
-          Object.values(v.data.summary).some((s) => s.total > 0 && s.ok === s.total),
-      )
-    )
-      continue;
+    const verified = new Set(
+      pub.verifications
+        .filter((v) => v.data.root_cid === pub.manifest?.root_cid)
+        .flatMap((v) =>
+          Object.entries(v.data.summary)
+            .filter(([, s]) => s.total > 0 && s.ok === s.total)
+            .map(([gateway]) => gateway),
+        ),
+    );
+    if (verified.size < MIN_VERIFIED_GATEWAYS) continue;
     if (!existsSync(historyPath))
       throw new Error(
         "published snapshot needs run-history.json; run pipeline export-history first",

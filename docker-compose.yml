@@ -42,6 +42,26 @@ services:
         echo "pipeline loop: run --incremental end $(date -u +%FT%TZ) exit=$?";
         sleep 21600; done
     env_file: .env
-    environment: { DATA_DIR: /app/data }
+    environment: { DATA_DIR: /app/data, PUBLICATIONS_DIR: /app/data/publications }
+    volumes: ["./data:/app/data"]
+    restart: unless-stopped
+  publisher:
+    image: oracle-cook-il:local
+    depends_on: [web]
+    # Publication is independent of ingestion (cf. per-source ingest -> build -> publish jobs): every
+    # hour it publishes the newest completed run if any run since the last publication changed data.
+    # It needs the DuckDB write lock only for two short updates, never during uploads/verification.
+    # A publication needs >= 2 successful pins (Filebase + Pinata) and >= 2 fully verified gateways;
+    # otherwise it stays staged under data/publications/<run_id>/pending and the web keeps serving
+    # the previous one. The web activates a new publication within a minute, without a restart.
+    command:
+      - sh
+      - -c
+      - >-
+        while true;
+        do node apps/pipeline/dist/cli.js publish-latest || echo "publisher: publish-latest failed exit=$?";
+        sleep 3600; done
+    env_file: .env
+    environment: { DATA_DIR: /app/data, PUBLICATIONS_DIR: /app/data/publications }
     volumes: ["./data:/app/data"]
     restart: unless-stopped

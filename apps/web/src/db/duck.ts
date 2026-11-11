@@ -3,6 +3,7 @@ import { legacySourceUrlSql } from "@cook/shared";
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { publishedSnapshot } from "./snapshot.js";
+import { publishedRunIds } from "../publications.js";
 import { logger } from "../logger.js";
 
 export type Row = Record<string, unknown>;
@@ -24,6 +25,8 @@ export interface Dataset {
     { kind: "duckdb"; path: string } | { kind: "parquet"; runId: string; dir: string };
   query(sql: string, params?: DuckDBValue[], timeoutMs?: number): Promise<Row[]>;
   close(): Promise<void>;
+  /** Published serving: switch to a newer verified publication / reload run history. True when anything changed. */
+  refresh?(): Promise<boolean>;
 }
 
 /** Newest `<datasetDir>/<run_id>` directory that is newer than the duckdb file, if any. */
@@ -62,12 +65,15 @@ export async function openDataset(
   datasetDir: string,
   serving?: { pubDirs: string[]; historyPath: string },
 ): Promise<Dataset> {
-  const published = serving
+  let published = serving
     ? await publishedSnapshot(datasetDir, serving.pubDirs, serving.historyPath)
     : null;
   // Production serving with publications must never fall through to the writer's DB.
   if (serving && !published) throw new Error("no verified published snapshot available locally");
-  const parquet = published ?? newerParquetRun(dbPath, datasetDir);
+  let parquet = published ?? newerParquetRun(dbPath, datasetDir);
+  const mtime = (p: string): number => (existsSync(p) ? statSync(p).mtimeMs : 0);
+  let historyMtime = serving ? mtime(serving.historyPath) : 0;
+  let seenNewest = serving ? publishedRunIds(serving.pubDirs)[0] : undefined;
   // One instance per query, closed right after: DuckDB holds a file lock for the lifetime of an
   // instance (even READ_ONLY), and the pipeline in the sibling container needs the exclusive
   // read-write lock on cook_il.duckdb for every run.
@@ -125,9 +131,30 @@ export async function openDataset(
   else logger.info({ dbPath }, "dataset: duckdb read-only, opened per query");
 
   return {
-    origin: parquet
-      ? { kind: "parquet", runId: parquet.runId, dir: parquet.dir }
-      : { kind: "duckdb", path: dbPath },
+    get origin() {
+      return parquet
+        ? { kind: "parquet" as const, runId: parquet.runId, dir: parquet.dir }
+        : { kind: "duckdb" as const, path: dbPath };
+    },
+    async refresh() {
+      if (!serving || !published) return false;
+      const newest = publishedRunIds(serving.pubDirs)[0];
+      const historyChanged = mtime(serving.historyPath) !== historyMtime;
+      if (newest === seenNewest && !historyChanged) return false;
+      seenNewest = newest;
+      historyMtime = mtime(serving.historyPath);
+      // Integrity-checks the newest publication that passes the gates; keeps serving the current one on failure.
+      const next = await publishedSnapshot(datasetDir, serving.pubDirs, serving.historyPath);
+      if (!next) return false;
+      if (next.runId !== published.runId)
+        logger.info(
+          { from: published.runId, to: next.runId },
+          "dataset: activated newer publication",
+        );
+      published = next;
+      parquet = next;
+      return true;
+    },
     async query(sql, params = [], timeoutMs = 10_000) {
       const instance = await open();
       const conn: DuckDBConnection = await instance.connect();

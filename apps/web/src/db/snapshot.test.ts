@@ -61,7 +61,7 @@ it("serves verified published rows and history while another process holds the i
       verifier: "test",
       gateways: [],
       checks: [],
-      summary: { "test-gateway": { ok: 1, total: 1 } },
+      summary: { "test-gateway": { ok: 1, total: 1 }, "second-gateway": { ok: 1, total: 1 } },
     }),
   );
   const history = ["r2", "r1"].map((run_id) => ({
@@ -141,3 +141,92 @@ it("required serving fails closed instead of falling through to the ingestion da
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+it("activates a newer publication without a restart, but only once two gateways verified it", async () => {
+  const root = mkdtempSync(join(tmpdir(), "hot-activation-"));
+  const datasets = join(root, "dataset");
+  const pubs = join(root, "publications");
+  const historyPath = join(root, "run-history.json");
+  const publishRunDir = async (runId: string, gateways: string[]) => {
+    mkdirSync(join(datasets, runId, "property"), { recursive: true });
+    mkdirSync(join(pubs, runId), { recursive: true });
+    const file = join(datasets, runId, "property", "data_0.parquet");
+    const db = await DuckDBInstance.create(":memory:");
+    const c = await db.connect();
+    await c.run(`COPY (SELECT '${runId}' AS pin14) TO '${file}' (FORMAT parquet)`);
+    c.closeSync();
+    db.closeSync();
+    const bytes = readFileSync(file);
+    const root_cid = `bafy${runId}`;
+    writeFileSync(
+      join(pubs, runId, "manifest.json"),
+      JSON.stringify({
+        schema: "cook-il.artifact-manifest.v1",
+        run_id: runId,
+        created_at: "2026-11-11T00:00:00Z",
+        root_cid,
+        car: { name: `${runId}.car`, size: 0, sha256: "", cid: null },
+        previous_run_id: null,
+        previous_root_cid: null,
+        ipns: null,
+        objects: [
+          {
+            name: "property/data_0.parquet",
+            cid: "bafyfile",
+            size: bytes.length,
+            codec: "file",
+            sha256: createHash("sha256").update(bytes).digest("hex"),
+          },
+        ],
+        pins: [],
+        origins: [],
+      }),
+    );
+    writeFileSync(
+      join(pubs, runId, "verification.json"),
+      JSON.stringify({
+        run_id: runId,
+        root_cid,
+        verified_at: "2026-11-11T00:00:00Z",
+        verifier: "test",
+        gateways,
+        checks: [],
+        summary: Object.fromEntries(gateways.map((g) => [g, { ok: 1, total: 1 }])),
+      }),
+    );
+  };
+  const history = (ids: string[]) =>
+    writeFileSync(
+      historyPath,
+      JSON.stringify(
+        ids.map((run_id) => ({ run_id, status: "ok", mode: "incremental", deltas: {} })),
+      ),
+    );
+  try {
+    await publishRunDir("r1", ["g1", "g2"]);
+    history(["r1"]);
+    const ds = await openDataset(join(root, "x.duckdb"), datasets, {
+      pubDirs: [pubs],
+      historyPath,
+    });
+    expect(ds.origin).toMatchObject({ kind: "parquet", runId: "r1" });
+
+    await publishRunDir("r2", ["g1"]); // one verified gateway: below the serving gate
+    history(["r2", "r1"]);
+    await ds.refresh!();
+    expect(ds.origin).toMatchObject({ runId: "r1" });
+    expect(await ds.query("SELECT run_id FROM run ORDER BY run_id")).toEqual([
+      { run_id: "r1" },
+      { run_id: "r2" },
+    ]);
+
+    await publishRunDir("r3", ["g1", "g2"]);
+    history(["r3", "r2", "r1"]);
+    expect(await ds.refresh!()).toBe(true);
+    expect(ds.origin).toMatchObject({ kind: "parquet", runId: "r3" });
+    expect(await ds.query("SELECT pin14 FROM property")).toEqual([{ pin14: "r3" }]);
+    expect(await ds.refresh!()).toBe(false);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 20_000);

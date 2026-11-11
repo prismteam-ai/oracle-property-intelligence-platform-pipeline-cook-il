@@ -167,35 +167,49 @@ export async function fetchStep(c: RunContext): Promise<FetchResult[]> {
   if (!c.incremental) {
     return fetchSources({ dataDir: c.dataDir, auth: c.auth, log: c.log, batchId: "full", sources });
   }
+  // Each source is independent (own watermark, own raw batch): they run concurrently and a failing
+  // source becomes a dead letter for this run instead of aborting the other sources.
   const until = new Date().toISOString();
-  const out: FetchResult[] = [];
-  for (const s of sources) {
-    const since = await readWatermark(c.db, s.system);
+  const marks = new Map<string, string | null>();
+  for (const s of sources) marks.set(s.system, await readWatermark(c.db, s.system));
+  const one = async (s: Source): Promise<FetchResult[]> => {
+    const since = marks.get(s.system);
     if (!since) {
       c.log.warn({ source: s.system }, "no watermark; incremental falls back to full batch");
-      out.push(
-        ...(await fetchSources({
-          dataDir: c.dataDir,
-          auth: c.auth,
-          log: c.log,
-          batchId: "full",
-          sources: [s],
-        })),
-      );
-      continue;
-    }
-    out.push(
-      ...(await fetchSources({
+      return fetchSources({
         dataDir: c.dataDir,
         auth: c.auth,
         log: c.log,
-        batchId: `inc-${c.runId}`,
-        incremental: { since, until },
+        batchId: "full",
         sources: [s],
-      })),
-    );
-  }
-  return out;
+      });
+    }
+    return fetchSources({
+      dataDir: c.dataDir,
+      auth: c.auth,
+      log: c.log,
+      batchId: `inc-${c.runId}`,
+      incremental: { since, until },
+      sources: [s],
+    });
+  };
+  const results = await Promise.all(
+    sources.map((s) =>
+      one(s).catch((e: unknown): FetchResult[] => {
+        const error = e instanceof Error ? e.message : String(e);
+        c.log.error({ source: s.system, error }, "source fetch failed; other sources continue");
+        return [
+          {
+            source_system: s.system,
+            batch_id: `inc-${c.runId}`,
+            done: null,
+            dead_letters: [{ key: null, error, at: new Date().toISOString() }],
+          },
+        ];
+      }),
+    ),
+  );
+  return results.flat();
 }
 
 /** fetch + stage + transform with a run row; dead letters never abort the run, transform errors do. */

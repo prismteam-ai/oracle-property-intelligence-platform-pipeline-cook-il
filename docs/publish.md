@@ -33,7 +33,18 @@ Pinning: Filebase (S3 `PutObject` with `import: car` metadata, `FILEBASE_ACCESS_
 variables are missing is **skipped and recorded** in `pins` with `ok:false, detail:"skipped: ..."`; a CID mismatch is
 recorded the same way. Socrata credentials are not needed for `publish` / `verify`.
 
-Verification fetches every file object from every gateway and compares size and sha256; 3 attempts with backoff on
+**Publication gate.** A run is published only when **≥ 2 pins succeed** (Filebase and Pinata) and
+**≥ 2 gateways** return every object with matching size and sha256 (re-verified up to three times while new
+content propagates). Until then manifest and verification stay staged in
+`data/publications/<run_id>/pending/` with `rejected.json`, nothing is recorded on the run row, the command
+exits non-zero and the web keeps serving the previous publication. The web applies the same ≥ 2 fully
+verified gateways rule before it serves any snapshot.
+
+**Retention.** Pinata's free tier holds one full snapshot (~690 MB), so each publication first unpins earlier
+`cook-il-*` uploads there: the newest snapshot has two pins, older ones stay pinned on Filebase and their CARs
+remain importable from GitHub Releases (runs 1–3) or the Filebase bucket (`runs/<run_id>/<run_id>.car`).
+
+Verification fetches every file object from every gateway, gateways concurrently, and compares size and sha256; 3 attempts with backoff on
 429 / 5xx. Default order: independent gateways first (`gw.ipfs-lens.dev`, `dget.top`, `ipfs.io`, `dweb.link`), then
 the pinning providers' own gateways (`gateway.pinata.cloud`, `ipfs.filebase.io`); the web labels each as
 "independent" or "pinning provider". `--gateways a,b,c` (prefixes like `https://ipfs.io/ipfs/`) overrides the list

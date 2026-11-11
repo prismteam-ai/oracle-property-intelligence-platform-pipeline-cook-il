@@ -244,71 +244,76 @@ export async function verify(opts: {
   retries?: number;
 }): Promise<Verification> {
   const gateways = opts.gateways ?? DEFAULT_GATEWAYS;
-  const checks: z.infer<typeof GatewayCheck>[] = [];
   const files = opts.objects.filter((o) => o.codec === "file");
   const retries = opts.retries ?? 1;
   const timeoutMs = opts.timeoutMs ?? 30_000;
-  for (const gw of gateways) {
-    // After three consecutive rate-limit/timeout failures on one gateway, record the rest as skipped.
-    let consecutiveFailures = 0;
-    for (const o of files) {
-      const url = `${gw}${opts.rootCid}/${o.name}`;
-      let last: z.infer<typeof GatewayCheck> | undefined;
-      if (consecutiveFailures >= 3) {
-        checks.push({
-          gateway: gw,
-          name: o.name,
-          cid: o.cid,
-          status: 0,
-          size_match: false,
-          digest_match: false,
-          ms: 0,
-          fetched_at: new Date().toISOString(),
-          error: "skipped: gateway rate-limited or unreachable on 3 consecutive objects",
-        });
-        continue;
-      }
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        const t0 = Date.now();
-        try {
-          const r = await fetch(url, {
-            headers: { "user-agent": "cook-il-pipeline-verify/1.0" },
-            signal: AbortSignal.timeout(timeoutMs),
-          });
-          const buf = new Uint8Array(await r.arrayBuffer());
-          last = {
-            gateway: gw,
-            name: o.name,
-            cid: o.cid,
-            status: r.status,
-            size_match: r.status === 200 && buf.length === o.size,
-            digest_match: r.status === 200 && sha256(buf) === o.sha256,
-            ms: Date.now() - t0,
-            fetched_at: new Date().toISOString(),
-          };
-          if (last.digest_match || (r.status !== 429 && r.status < 500)) break;
-        } catch (e) {
-          last = {
+  // Gateways are independent operators: check them concurrently, each one sequentially.
+  const perGateway = await Promise.all(
+    gateways.map(async (gw) => {
+      const checks: z.infer<typeof GatewayCheck>[] = [];
+      // After three consecutive rate-limit/timeout failures on one gateway, record the rest as skipped.
+      let consecutiveFailures = 0;
+      for (const o of files) {
+        const url = `${gw}${opts.rootCid}/${o.name}`;
+        let last: z.infer<typeof GatewayCheck> | undefined;
+        if (consecutiveFailures >= 3) {
+          checks.push({
             gateway: gw,
             name: o.name,
             cid: o.cid,
             status: 0,
             size_match: false,
             digest_match: false,
-            ms: Date.now() - t0,
+            ms: 0,
             fetched_at: new Date().toISOString(),
-            error: String(e).slice(0, 120),
-          };
+            error: "skipped: gateway rate-limited or unreachable on 3 consecutive objects",
+          });
+          continue;
         }
-        if (attempt < retries) await new Promise((res) => setTimeout(res, 5_000 * (attempt + 1)));
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          const t0 = Date.now();
+          try {
+            const r = await fetch(url, {
+              headers: { "user-agent": "cook-il-pipeline-verify/1.0" },
+              signal: AbortSignal.timeout(timeoutMs),
+            });
+            const buf = new Uint8Array(await r.arrayBuffer());
+            last = {
+              gateway: gw,
+              name: o.name,
+              cid: o.cid,
+              status: r.status,
+              size_match: r.status === 200 && buf.length === o.size,
+              digest_match: r.status === 200 && sha256(buf) === o.sha256,
+              ms: Date.now() - t0,
+              fetched_at: new Date().toISOString(),
+            };
+            if (last.digest_match || (r.status !== 429 && r.status < 500)) break;
+          } catch (e) {
+            last = {
+              gateway: gw,
+              name: o.name,
+              cid: o.cid,
+              status: 0,
+              size_match: false,
+              digest_match: false,
+              ms: Date.now() - t0,
+              fetched_at: new Date().toISOString(),
+              error: String(e).slice(0, 120),
+            };
+          }
+          if (attempt < retries) await new Promise((res) => setTimeout(res, 5_000 * (attempt + 1)));
+        }
+        if (last) {
+          checks.push(last);
+          const rateLimited = last.status === 429 || last.status === 0 || last.status >= 500;
+          consecutiveFailures = rateLimited ? consecutiveFailures + 1 : 0;
+        }
       }
-      if (last) {
-        checks.push(last);
-        const rateLimited = last.status === 429 || last.status === 0 || last.status >= 500;
-        consecutiveFailures = rateLimited ? consecutiveFailures + 1 : 0;
-      }
-    }
-  }
+      return checks;
+    }),
+  );
+  const checks = perGateway.flat();
   const summary: Record<string, { ok: number; total: number }> = {};
   for (const c of checks) {
     summary[c.gateway] ??= { ok: 0, total: 0 };
@@ -324,6 +329,35 @@ export async function verify(opts: {
     checks,
     summary,
   };
+}
+
+/** Gateways that returned every file object with matching size and sha256. */
+export function fullyVerifiedGateways(v: Pick<Verification, "summary">): string[] {
+  return Object.entries(v.summary)
+    .filter(([, s]) => s.total > 0 && s.ok === s.total)
+    .map(([gw]) => gw);
+}
+
+/**
+ * Pinata's free tier holds one full snapshot: before uploading a new one, unpin earlier uploads
+ * whose name starts with `prefix`. Older snapshots stay pinned on Filebase and as CAR releases.
+ */
+export async function prunePinata(jwt: string, prefix: string): Promise<string[]> {
+  const headers = { Authorization: `Bearer ${jwt}` };
+  const r = await fetch("https://api.pinata.cloud/v3/files/public?limit=100", { headers });
+  if (!r.ok) throw new Error(`Pinata list failed: ${r.status}`);
+  const body = (await r.json()) as { data?: { files?: { id: string; name: string | null }[] } };
+  const removed: string[] = [];
+  for (const f of body.data?.files ?? []) {
+    if (!f.name?.startsWith(prefix)) continue;
+    const d = await fetch(`https://api.pinata.cloud/v3/files/public/${f.id}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (!d.ok) throw new Error(`Pinata unpin of ${f.name} failed: ${d.status}`);
+    removed.push(f.name);
+  }
+  return removed;
 }
 
 export interface PublishOptions {
@@ -378,6 +412,7 @@ export async function publishRun(
     });
   if (o.pinataJwt) {
     try {
+      const unpinned = await prunePinata(o.pinataJwt, "cook-il-");
       const cid = await pinPinata(o.pinataJwt, o.datasetDir, `cook-il-${o.runId}`);
       pins.push({
         provider: "pinata",
@@ -385,7 +420,8 @@ export async function publishRun(
         at: new Date().toISOString(),
         ok: cid === dag.rootCid,
         detail:
-          cid === dag.rootCid ? "folder upload, CID matches local root" : `CID mismatch: ${cid}`,
+          (cid === dag.rootCid ? "folder upload, CID matches local root" : `CID mismatch: ${cid}`) +
+          (unpinned.length ? `; free-tier retention unpinned ${unpinned.join(", ")}` : ""),
       });
     } catch (e) {
       pins.push({

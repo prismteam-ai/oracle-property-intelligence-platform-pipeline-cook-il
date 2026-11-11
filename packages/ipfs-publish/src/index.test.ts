@@ -1,10 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, writeFile, mkdir, readFile } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CarReader } from "@ipld/car";
-import { buildDag, writeCar, verify, Manifest } from "./index.js";
+import {
+  buildDag,
+  fullyVerifiedGateways,
+  writeCar,
+  verify,
+  Manifest,
+  prunePinata,
+} from "./index.js";
 
 async function fixture(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "dag-"));
@@ -87,4 +94,38 @@ describe("verify early stop", () => {
     });
     expect(v.checks.filter((c) => c.error?.startsWith("skipped")).length).toBe(objects.length - 3);
   }, 20_000);
+});
+
+describe("durability helpers", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("counts only gateways that returned every object", () => {
+    expect(
+      fullyVerifiedGateways({
+        summary: { a: { ok: 30, total: 30 }, b: { ok: 29, total: 30 }, c: { ok: 0, total: 0 } },
+      }),
+    ).toEqual(["a"]);
+  });
+  it("unpins only earlier uploads with the snapshot prefix (Pinata free-tier retention)", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", (url: string, init?: RequestInit) => {
+      calls.push(`${init?.method ?? "GET"} ${url}`);
+      if (!init?.method)
+        return Promise.resolve(
+          Response.json({
+            data: {
+              files: [
+                { id: "1", name: "cook-il-20261110T204914Z" },
+                { id: "2", name: "proto-dir" },
+              ],
+            },
+          }),
+        );
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
+    expect(await prunePinata("jwt", "cook-il-")).toEqual(["cook-il-20261110T204914Z"]);
+    expect(calls).toEqual([
+      "GET https://api.pinata.cloud/v3/files/public?limit=100",
+      "DELETE https://api.pinata.cloud/v3/files/public/1",
+    ]);
+  });
 });

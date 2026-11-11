@@ -8,6 +8,9 @@ import {
   ROOFING_EXCLUDE,
   ROOFING_INCLUDE,
   ROOFING_RULE,
+  ROOFING_STRONG,
+  NOT_COMPLETED_STATUSES,
+  MIN_ROOF_ANCHOR_DATE,
   SQL_NORMALIZE_NAME,
   SQL_STRIP_SUFFIXES,
   sourceRecordUrlSql,
@@ -238,11 +241,13 @@ function propertyBaseSql(runId: string, asOf: string): string {
 function permitSql(runId: string, asOf: string): string[] {
   const cook = findSource("cook_assessor_permits");
   const chi = findSource("chicago_permits");
+  const strongOrNotExcluded = (col: string) =>
+    `(regexp_matches(${col}, ${q(ROOFING_STRONG)}, 'i') or not regexp_matches(${col}, ${q(ROOFING_EXCLUDE)}, 'i'))`;
   const roofing = (col: string) =>
-    `regexp_matches(${col}, ${q(ROOFING_INCLUDE)}, 'i') and not regexp_matches(${col}, ${q(ROOFING_EXCLUDE)}, 'i')`;
+    `regexp_matches(${col}, ${q(ROOFING_INCLUDE)}, 'i') and ${strongOrNotExcluded(col)}`;
   const rule = (col: string) =>
     `case when regexp_matches(${col}, ${q(ROOFING_INCLUDE)}, 'i') then
-       (case when regexp_matches(${col}, ${q(ROOFING_EXCLUDE)}, 'i') then ${q(`excluded:/${ROOFING_EXCLUDE}/i`)} else ${q(ROOFING_RULE)} end) end`;
+       (case when not ${strongOrNotExcluded(col)} then ${q(`excluded:/${ROOFING_EXCLUDE}/i`)} else ${q(ROOFING_RULE)} end) end`;
   const chiContractor = Array.from({ length: 15 }, (_, i) => i + 1)
     .map(
       (n) =>
@@ -323,9 +328,15 @@ function edgeSql(runId: string): string[] {
   ];
 }
 
-/** Mirrors estimateRoofAge(): latest completed reroof -> high; completed new construction -> medium; year built -> low. */
+/**
+ * Mirrors estimateRoofAge(): latest completed reroof -> high; completed new construction -> medium; year built -> low.
+ * Only completed permits anchor an age (cancelled/expired/revoked never prove work was done), and anchors before
+ * 1900 or before the building's year built are quarantined as source-data errors.
+ */
 function roofAgeSql(asOf: string): string {
   const d = `${q(asOf)}::date`;
+  const anchor = "coalesce(p.closed_at, p.issued_at)";
+  const notCompleted = NOT_COMPLETED_STATUSES.map(q).join(", ");
   return `update property pr set
       roof_age_years = coalesce(a.reroof_years, a.build_years, case when pr.year_built between 1800 and year(${d}) then year(${d}) - pr.year_built end),
       roof_age_basis = case when a.reroof_years is not null then 'reroof_permit' when a.build_years is not null then 'new_construction_permit'
@@ -334,15 +345,18 @@ function roofAgeSql(asOf: string): string {
                                  when pr.year_built between 1800 and year(${d}) then 'low' end,
       roof_age_anchor_date = coalesce(a.reroof_date, a.build_date)
     from (
-      select pin14,
-        max(case when is_roofing then coalesce(closed_at, issued_at) end) as reroof_date,
-        max(case when is_new_construction then coalesce(closed_at, issued_at) end) as build_date,
-        date_diff('year', max(case when is_roofing then coalesce(closed_at, issued_at) end), ${d}) as reroof_years,
-        date_diff('year', max(case when is_new_construction then coalesce(closed_at, issued_at) end), ${d}) as build_years
-      from permit
-      where not status_is_open and pin14 is not null and coalesce(closed_at, issued_at) is not null and coalesce(closed_at, issued_at) <= ${d}
-        and (is_roofing or is_new_construction)
-      group by pin14
+      select p.pin14,
+        max(case when p.is_roofing then ${anchor} end) as reroof_date,
+        max(case when p.is_new_construction then ${anchor} end) as build_date,
+        date_diff('year', max(case when p.is_roofing then ${anchor} end), ${d}) as reroof_years,
+        date_diff('year', max(case when p.is_new_construction then ${anchor} end), ${d}) as build_years
+      from permit p left join property x on x.pin14 = p.pin14
+      where not p.status_is_open and p.pin14 is not null and ${anchor} is not null and ${anchor} <= ${d}
+        and upper(coalesce(p.status, '')) not in (${notCompleted})
+        and ${anchor} >= ${q(MIN_ROOF_ANCHOR_DATE)}::date
+        and (x.year_built is null or x.year_built not between 1800 and year(${d}) or year(${anchor}) >= x.year_built)
+        and (p.is_roofing or p.is_new_construction)
+      group by p.pin14
     ) a where a.pin14 = pr.pin14`;
 }
 
