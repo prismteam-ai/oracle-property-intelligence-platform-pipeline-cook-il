@@ -74,7 +74,7 @@ UNION ALL SELECT 'run', count(*) FROM run`,
 FROM property p
 JOIN permit x ON x.pin14 = p.pin14
 JOIN contractor c ON c.contractor_id = x.contractor_id
-WHERE c.bbb_rating IS NOT NULL AND p.lat IS NOT NULL AND p.lon IS NOT NULL
+WHERE c.bbb_rating IS NOT NULL AND x.is_roofing AND p.lat IS NOT NULL AND p.lon IS NOT NULL
 ORDER BY p.pin14
 LIMIT 25`,
   },
