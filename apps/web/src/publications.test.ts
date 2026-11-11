@@ -48,6 +48,23 @@ const verification = (verifier: string) => ({
 });
 
 describe("publications", () => {
+  it("links verified CAR releases without changing manifest bytes or identity", () => {
+    const base = mkdtempSync(join(tmpdir(), "pub-release-"));
+    for (const runId of ["20261110T204914Z", "20261110T205226Z", "20261110T221716Z", "future"]) {
+      mkdirSync(join(base, runId));
+      const raw = JSON.stringify({ ...manifest, run_id: runId });
+      writeFileSync(join(base, runId, "manifest.json"), raw);
+      const pub = getPublication([base], runId);
+      expect(pub.manifest_raw).toBe(raw);
+      expect(pub.manifest_cid).toBe(manifestSha256(raw));
+      expect(pub.manifest?.car.release_url).toBeUndefined();
+      expect(pub.car_release_url).toBe(
+        runId === "future"
+          ? null
+          : `https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/tag/run-${runId}`,
+      );
+    }
+  });
   it("derives URLs on all six default gateways", () => {
     const urls = gatewayUrls("bafyabc", "property/part-0.parquet");
     expect(GATEWAYS).toHaveLength(6);

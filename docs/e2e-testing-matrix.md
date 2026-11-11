@@ -2,6 +2,8 @@
 
 The suite tests the public deployment and real published Parquet data. It never starts a fixture app. **The final release gate is incomplete:** source/build evidence, control inventory and passing test families do not imply all acceptance criteria/control states passed.
 
+User amendment (2026-11-11): PV05 now uses `https://gw.ipfs-lens.dev/ipfs/` and `https://gateway.pinata.cloud/ipfs/`, separately operated public gateways. Pinata remains labelled a pinning-provider gateway, not an independent non-provider gateway. The original ipfs.io/dweb.link HTTP pair retired on September 21 ([official notice](https://gatewaychanges.ipfs.io/)); its HTTP429 bodies explicitly announce retirement, not transient overload. Preserve historical failures. Both replacement gateways must return the exact manifest-listed bytes and SHA256; the video uses the same pair. Live curl probes returned1205 bytes and SHA256 `f54201cd5e2125927f65206e2cf216f5d335f3e8648072f5faf7ff2c199183a9` from each.
+
 ## Run
 
 ```sh
@@ -46,7 +48,7 @@ Every route/result-state inventory is attached as `control-inventory-*`. Invento
 ## Outstanding release blockers/gaps
 
 - Full nine-project final-build execution/ledger is pending. Failed/blocked/not-run or drifting cases cannot count as completion.
-- Canonical PV05 explicitly requires ipfs.io AND dweb.link. Known429 responses mean alternate gateways do not satisfy this exact case. Do not waive it or relabel it passed.
+- Canonical PV05 requires the user-approved IPFS Lens AND Pinata pair above. Preserve the retired-pair failures; replacement proof must pass on the final build.
 - The UI currently lacks CAR release anchors for some publications (`manifest.car.release_url` absent). The canonical journey asserts the actual anchor; an external release existing alone does not make that UI action pass.
 - Every source/evidence/download link destination, all older-run states, unknown-route recovery, accessibility/focus/touch/keyboard variants, prompt-provider timeout/recovery and full parameter-boundary matrix remain incomplete.
 - Actual source counts/freshness limitations and BBB availability must be assessed from recorded evidence; do not reward an accurate unavailable state as a current rating.

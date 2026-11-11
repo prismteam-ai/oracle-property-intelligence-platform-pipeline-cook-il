@@ -80,9 +80,9 @@ export function Publications() {
                     {fmt(m.car.cid)} ·{" "}
                     {carOnDisk ? (
                       "on disk"
-                    ) : m.car.release_url ? (
+                    ) : d.publication.car_release_url ? (
                       <>
-                        in GitHub Release <ExtLink href={m.car.release_url} />
+                        in GitHub Release <ExtLink href={d.publication.car_release_url} />
                       </>
                     ) : (
                       "not on this host (kept under data/publications on the pipeline host)"

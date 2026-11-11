@@ -9,6 +9,8 @@ type Publication = Output["publications"]["get"];
 import { test, expect, inventory, noOverflow, query, RUN, ROOT } from "./support.js";
 
 const SQL = "SELECT count(*)::INTEGER AS properties FROM property";
+// Approved replacement for the retired ipfs.io/dweb.link HTTP gateways (2026-11-11).
+const DEMO_GATEWAYS = ["https://gw.ipfs-lens.dev/ipfs/", "https://gateway.pinata.cloud/ipfs/"];
 const PROMPTS = [
   "Which properties in Cook County within five miles of Evanston have roofs older than 15 years?",
   "Which properties near that area have open roofing permits that have been open for many years, and who is the listed contractor?",
@@ -23,7 +25,7 @@ test("S01-S06 P01-P02: all routes, nav, back/forward, responsive inventory", asy
     ["/publications", "publications"],
     ["/query", "SQL"],
     ["/explore", "Explore"],
-    ["/agent", "Agent"],
+    ["/agent", "Noctowl"],
     ["/mcp", "MCP"],
   ];
   await page.goto("/");
@@ -76,7 +78,7 @@ test("P03-P04: publication navigation, manifest and expanded verification eviden
 test("P12 P09: every SQL sample executes, row limit and ownership filters", async ({ page }) => {
   await page.goto("/query");
   const samples = page.getByTestId("sample-query");
-  expect(await samples.count()).toBe(7);
+  expect(await samples.count()).toBe(8);
   for (let i = 0; i < (await samples.count()); i++) {
     await samples.nth(i).click();
     const sql = await page.getByTestId("sql").inputValue();
@@ -136,7 +138,10 @@ test("P05-P08: exact radius roof filter, all sort options, open permits and map 
   expect(data.source.rootCid).toBe(ROOT);
   await expect(page.getByTestId("search-meta")).toContainText("56");
   for (const value of ["distance", "roof_age", "open_days"]) {
+    const sortedResponse = page.waitForResponse((r) => r.url().includes("search.properties"));
     await page.getByTestId("sort").selectOption(value);
+    expect((await sortedResponse).ok()).toBeTruthy();
+    await expect(page.getByTestId("search")).toBeEnabled();
     await expect(page.getByTestId("sort")).toHaveValue(value);
   }
   await page.getByTestId("min-roof-age").fill("15");
@@ -196,9 +201,7 @@ test("P10: both exact README prompts, keyboard submit, persisted follow-up and c
   await expect(page.getByTestId("msg-agent")).toHaveCount(0);
 });
 
-test("PV05 exact required gateway pair: both resolve with size and digest", async ({
-  request,
-}, info) => {
+test("PV05 approved gateway pair: both resolve with size and digest", async ({ request }, info) => {
   const response = await request.get(
     "/trpc/publications.get?input=" + encodeURIComponent(JSON.stringify({ run_id: RUN })),
   );
@@ -209,7 +212,7 @@ test("PV05 exact required gateway pair: both resolve with size and digest", asyn
   );
   if (!object) throw new Error("missing frozen artifact");
   const results = [];
-  for (const gateway of ["https://ipfs.io/ipfs/", "https://dweb.link/ipfs/"]) {
+  for (const gateway of DEMO_GATEWAYS) {
     const r = await request.get(gateway + ROOT + "/" + object.name, { timeout: 30_000 });
     const bytes = await r.body();
     results.push({
@@ -261,7 +264,7 @@ test("PV01-PV11 canonical ordered video journey, exact queries/prompts and gatew
     await expect(page.getByTestId("root-cid")).toHaveText(ROOT);
     await expect(page.getByTestId("manifest-json")).toContainText(RUN);
   });
-  await test.step("PV05 exact ipfs.io+dweb.link byte/hash verification", async () => {
+  await test.step("PV05 approved IPFS Lens+Pinata byte/hash verification", async () => {
     const response = await request.get(
       "/trpc/publications.get?input=" + encodeURIComponent(JSON.stringify({ run_id: RUN })),
     );
@@ -271,9 +274,8 @@ test("PV01-PV11 canonical ordered video journey, exact queries/prompts and gatew
       (o: { name: string }) => o.name === "source_watermark/data_0.parquet",
     );
     if (!object) throw new Error("missing frozen artifact");
-    if (!object) throw new Error("missing frozen artifact");
     const results = [];
-    for (const gateway of ["https://ipfs.io/ipfs/", "https://dweb.link/ipfs/"]) {
+    for (const gateway of DEMO_GATEWAYS) {
       const r = await request.get(gateway + ROOT + "/" + object.name, { timeout: 30_000 });
       const body = await r.body();
       const actual = {

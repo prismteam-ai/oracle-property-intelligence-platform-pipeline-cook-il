@@ -11,6 +11,9 @@ import {
 
 export const GATEWAYS = DEFAULT_GATEWAYS; // "https://ipfs.io/ipfs/" style prefixes
 
+// These releases were verified after publication; keep the immutable manifests unchanged.
+const RELEASED_RUNS = new Set(["20261110T204914Z", "20261110T205226Z", "20261110T221716Z"]);
+
 /** Gateways run by the pinning providers we use; everything else is an independent third party. */
 export const PINNING_PROVIDER_GATEWAYS = [
   "https://gateway.pinata.cloud",
@@ -52,6 +55,7 @@ export interface Publication {
   manifest_raw: string | null;
   /** from run.json when present, else sha256 of manifest.json */
   manifest_cid: string | null;
+  car_release_url: string | null;
   /** every verification*.json in the run dir (pipeline host, GitHub Actions, ...), oldest file name first */
   verifications: { file: string; data: Verification }[];
   files: string[];
@@ -83,6 +87,12 @@ export function getPublication(dirs: string[], runId: string): Publication {
       manifest: manifest.success ? manifest.data : null,
       manifest_raw: raw,
       manifest_cid: sidecar?.manifest_cid ?? manifestSha256(raw),
+      car_release_url: manifest.success
+        ? (manifest.data.car.release_url ??
+          (RELEASED_RUNS.has(runId)
+            ? `https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/tag/run-${runId}`
+            : null))
+        : null,
       verifications,
       files,
     };
@@ -93,6 +103,7 @@ export function getPublication(dirs: string[], runId: string): Publication {
     manifest: null,
     manifest_raw: null,
     manifest_cid: null,
+    car_release_url: null,
     verifications: [],
     files: [],
   };
