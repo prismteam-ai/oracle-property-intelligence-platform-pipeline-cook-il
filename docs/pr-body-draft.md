@@ -63,7 +63,3 @@ Built against the Soofi team kit routing for this story (`oracle` + county skill
 - Source links: record-specific source URLs were malformed in the published bytes (they returned HTTP 400). They are now generated correctly and repaired at read time without changing published bytes, manifests or CIDs; the original value is kept as `source_url_original`. Details: `docs/source-links-r3.md`.
 - Verification: unit tests, build, lint and CI pass. Hosted Playwright passed 99/99 (11 cases x 9 browser/viewport variants) against build `4dafad5`, including both README prompts and the canonical demo journey. The later `6cb4880` source-link change was verified by unit tests, CI and live record probes, but the full hosted suite was not re-run on it to completion.
 - Suburban permits come from the Assessor's monthly feed (what municipalities report), not from each municipal portal; Cook County Clerk recordings and Treasurer data have no bulk export.
-
-## Self-assessment
-
-Slowking round 3: `docs/slowking-self-assessment-2026-11-11-r3.md` (87/100 provisional quality on build `4dafad5`, assuming only the PR and demo gates pass; strict result was 0/100 because no PR or demo existed then). Round 2 gave 76/100 on an older build. A fresh evaluation against this PR and video follows.

@@ -10,4 +10,4 @@ Before this change, restarting ingestion produced health 503 with DuckDB lock er
 
 Real MCP `findProperties` probes using either `minRoofAge: 150` or `minRoofAgeYears: 150`, Evanston centre 42.0451/-87.6877, radius 2 miles, limit 10 returned HTTP 200, filtered total 56 and 10 rows with minimum age 150. Credentials were loaded in process from the ignored environment file and were not recorded.
 
-This is deployment/integration evidence, not a complete frontend matrix or a Slowking result. Run history is captured at web startup and refreshes on a controlled web restart; newer ingestion never changes the served publication until an operator selects and deploys a verified publication.
+This is deployment/integration evidence, not a complete frontend matrix. Run history is captured at web startup and refreshes on a controlled web restart; newer ingestion never changes the served publication until an operator selects and deploys a verified publication.

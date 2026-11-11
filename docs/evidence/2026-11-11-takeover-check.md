@@ -8,4 +8,4 @@ Two genuine blockers remained: missing CAR release anchors and the retired HTTP 
 
 Gateway discovery: ipfs.io/dweb.link HTTP429 responses carry `Sunset: Mon, 21 Sep 2026 00:00:00 GMT` and direct users to https://gatewaychanges.ipfs.io/. The body announces service-worker-only migration; the notice confirms HTTP gateway retirement. The user explicitly approved replacing PV05 with two separately operated public gateways, IPFS Lens and Pinata. Curl retrieved the frozen watermark artifact from both (HTTP200,1205 bytes,SHA256 `f54201cd5e2125927f65206e2cf216f5d335f3e8648072f5faf7ff2c199183a9`). Filebase independently returned the same bytes. This does not establish redundant pins or current availability of every object.
 
-Current user quality threshold is80 per repository; strict PR/demo gates remain pending. No new Slowking score or complete hosted matrix is claimed here.
+No complete hosted matrix is claimed here.

@@ -6,7 +6,7 @@
 - **Demo video:** [cook-il-demo.mp4](https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/download/demo-video-2026-11-11/cook-il-demo.mp4) (2:23, narration only)
 - **Companion PR (Roofing CRM):** https://github.com/prismteam-ai/roofing-crm/pull/21
 - **Run locally:** `pnpm install --frozen-lockfile && pnpm build`, then see `docs/pipeline.md` and `docs/web.md`.
-- **Evidence:** `docs/pr-body-draft.md` (runtime, CIDs, limitations), `docs/e2e-testing-matrix.md`, `docs/kit-usage.md`, `docs/source-links-r3.md`, and the Slowking reports `docs/slowking-self-assessment-2026-11-11-r*.md`.
+- **Evidence:** `docs/pr-body-draft.md` (runtime, CIDs, limitations), `docs/e2e-testing-matrix.md`, `docs/kit-usage.md`, `docs/source-links-r3.md`.
 - **Published runs:** manifests and verification in `publications/`; CAR files in this fork's Releases (`run-*`).
 
 ---
