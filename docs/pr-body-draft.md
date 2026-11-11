@@ -2,7 +2,7 @@
 
 **Live runtime:** https://cook-il.108-142-177-43.nip.io (public, no credentials)
 **Demo video:** https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/download/demo-video-2026-11-11/cook-il-demo.mp4 (2:23, narration only; captions in `cook-il-demo.srt`; recorded against build `6cb4880`; loading pauses are shortened and labelled on screen)
-**Companion PR (Roofing CRM):** <CRM_PR_URL>
+**Companion PR (Roofing CRM):** https://github.com/prismteam-ai/roofing-crm/pull/21
 
 ## Runtime and access
 
