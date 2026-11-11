@@ -1,8 +1,8 @@
 # Cook County, IL — Oracle property intelligence pipeline (DuckDB + IPFS + MCP + agent)
 
 **Live runtime:** https://cook-il.108-142-177-43.nip.io (public, no credentials)
-**Demo video:** Pending final checks; no video recorded yet.
-**Companion PR (Roofing CRM):** Pending creation of the companion draft.
+**Demo video:** https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/download/demo-video-2026-11-11/cook-il-demo.mp4 (2:23, narration only; captions in `cook-il-demo.srt`; recorded against build `6cb4880`; loading pauses are shortened and labelled on screen)
+**Companion PR (Roofing CRM):** <CRM_PR_URL>
 
 ## Runtime and access
 
@@ -13,7 +13,7 @@
 | MCP endpoint              | `POST https://cook-il.108-142-177-43.nip.io/mcp`, header `Authorization: Bearer prism-cook-il-readonly-2026` (read-only token, documented on `/mcp`)                                                                                                                                             |
 | Latest published root CID | `bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq` (run `20261110T221716Z`), manifest `publications/20261110T221716Z/manifest.json`, CAR in the GitHub Release `https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/releases/tag/run-20261110T221716Z` |
 | Pins                      | Filebase (CAR import) and Pinata (folder upload) for run 1 (same CID); Filebase for later runs                                                                                                                                                                                                   |
-| Build                     | `/build.json` shows the deployed commit; CI: https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/actions/runs/42923037696                                                                                                                                         |
+| Build                     | `/build.json` reports the deployed `6cb4880`; later commits on this branch change docs only. CI for `6cb4880`: https://github.com/vsterian/oracle-property-intelligence-platform-pipeline-cook-il/actions/runs/42938421569                                                                       |
 
 ## What was built
 
@@ -45,7 +45,8 @@
 ```bash
 ROOT=bafybeifhz5scgrouns27paizph5zpnlxhovr6vcm6skecu67msh4ffjlaq
 curl --fail -sL "https://gw.ipfs-lens.dev/ipfs/$ROOT/source_watermark/data_0.parquet" | sha256sum
-curl --fail -sL "https://dget.top/ipfs/$ROOT/source_watermark/data_0.parquet" | sha256sum
+curl --fail -sL "https://gateway.pinata.cloud/ipfs/$ROOT/source_watermark/data_0.parquet" | sha256sum
+# both print f54201cd5e2125927f65206e2cf216f5d335f3e8648072f5faf7ff2c199183a9 (1205 bytes), matching the manifest
 curl -s -X POST https://cook-il.108-142-177-43.nip.io/mcp -H 'Authorization: Bearer prism-cook-il-readonly-2026' -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"getDatasetInfo","arguments":{}}}'
 ```
 
@@ -56,11 +57,13 @@ Built against the Soofi team kit routing for this story (`oracle` + county skill
 ## Known limitations
 
 - Neither permit feed carries a completion date; closure is derived from terminal status, so open duration counts from the issue date.
-- `ipfs.io` and `dweb.link` rate-limit (429) the pipeline host; verification records them honestly and succeeds on other independent public gateways; the GitHub Actions re-verification retries from a datacenter IP.
-- Pinata free tier holds one full snapshot; later runs are pinned on Filebase.
-- BBB: 21 contractors have archived A+ profiles, labelled stale with capture dates; 129 are unavailable after the robots check was blocked. Others are unknown, never presented as current ratings.
+- Gateways: the README's example gateways `ipfs.io` and `dweb.link` retired HTTP retrieval on 2026-09-21 (https://gatewaychanges.ipfs.io/), so they answer 429 and no longer serve content. The demo proves retrieval through `gw.ipfs-lens.dev` and `gateway.pinata.cloud`, two separately operated public gateways, with matching size and SHA-256. Pinata is also a pinning provider, so this shows two gateways, not two independent pin holders. Historical 429 results stay in the committed verification records.
+- Pinata free tier holds one full snapshot; later runs are pinned on Filebase only, so vendor-loss durability of later runs is not demonstrated.
+- BBB: 21 contractors have archived A+ profiles, labelled stale with capture date unknown; 129 are unavailable after the robots check was blocked. Others are unknown, never presented as current ratings.
+- Source links: record-specific source URLs were malformed in the published bytes (they returned HTTP 400). They are now generated correctly and repaired at read time without changing published bytes, manifests or CIDs; the original value is kept as `source_url_original`. Details: `docs/source-links-r3.md`.
+- Verification: unit tests, build, lint and CI pass. Hosted Playwright passed 99/99 (11 cases x 9 browser/viewport variants) against build `4dafad5`, including both README prompts and the canonical demo journey. The later `6cb4880` source-link change was verified by unit tests, CI and live record probes, but the full hosted suite was not re-run on it to completion.
 - Suburban permits come from the Assessor's monthly feed (what municipalities report), not from each municipal portal; Cook County Clerk recordings and Treasurer data have no bulk export.
 
 ## Self-assessment
 
-Slowking self-run: `docs/slowking-self-assessment-2026-11-11-r2.md` (76/100 provisional, strict actual-gates result 0/100 pending PR and demo).
+Slowking round 3: `docs/slowking-self-assessment-2026-11-11-r3.md` (87/100 provisional quality on build `4dafad5`, assuming only the PR and demo gates pass; strict result was 0/100 because no PR or demo existed then). Round 2 gave 76/100 on an older build. A fresh evaluation against this PR and video follows.
